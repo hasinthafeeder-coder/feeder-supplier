@@ -686,17 +686,42 @@
                 <div class="row">
                     <div class="col-xxl-6 col-xxxl-12">
                         <div class="card bg-white p-20 rounded-10 border border-white mb-4">
-                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-20">
-                                <h3>Top Selling Products</h3>
+                            <div
+                                class="d-flex justify-content-between align-items-center flex-wrap flex-md-nowrap gap-3 mb-20">
+                                <h3 class="text-nowrap">Top Selling Products</h3>
 
-                                <div
-                                    class="d-flex flex-column flex-md-row align-items-stretch align-items-md-center gap-2 justify-content-start justify-content-md-end top-products-filter-controls">
+                                <div class="d-flex flex-column flex-md-row align-items-stretch align-items-md-center gap-2 justify-content-start justify-content-md-end top-products-filter-controls"
+                                    style="width: 100%; flex: 1 1 auto;">
+                                    <style>
+                                        @media (max-width: 767px) {
+                                            input[type="date"].form-control {
+                                                width: 100% !important;
+                                            }
+                                        }
+
+                                        @media (min-width: 768px) {
+                                            input[type="date"].form-control {
+                                                width: 160px;
+                                            }
+
+                                            input[type="text"].form-control {
+                                                width: 220px;
+                                            }
+                                        }
+                                    </style>
+                                    <form class="table-src-form position-relative">
+
+                                    </form>
+                                    <input type="text" class="form-control form-control-sm"
+                                        placeholder="Search products..." />
+                                    <div
+                                        class="src-btn position-absolute top-50 start-0 translate-middle-y bg-transparent p-0 border-0">
+                                        <span class="material-symbols-outlined">search</span>
+                                    </div>
                                     <input type="date" class="form-control form-control-sm"
-                                        aria-label="Top selling products start date"
-                                        style="width: 160px; min-width: 140px;" />
+                                        aria-label="Top selling products start date" style="min-width: 140px;" />
                                     <input type="date" class="form-control form-control-sm"
-                                        aria-label="Top selling products end date"
-                                        style="width: 160px; min-width: 140px;" />
+                                        aria-label="Top selling products end date" style="min-width: 140px;" />
                                     <button type="button"
                                         class="btn btn-primary text-white btn-sm top-products-filter-btn"
                                         style="min-width: 88px;">Filter</button>
@@ -881,36 +906,6 @@
                                 <h3>Couriers</h3>
 
                                 <div class="d-flex align-items-center">
-                                    <div class="dropdown select-dropdown without-border">
-                                        <button class="dropdown-toggle bg-transparent text-secondary fs-15"
-                                            data-bs-toggle="dropdown" aria-expanded="false">
-                                            Show All
-                                        </button>
-
-                                        <ul class="dropdown-menu dropdown-menu-end bg-white border-0 box-shadow rounded-10"
-                                            data-simplebar>
-                                            <li>
-                                                <button class="dropdown-item text-secondary">
-                                                    Shipped
-                                                </button>
-                                            </li>
-                                            <li>
-                                                <button class="dropdown-item text-secondary">
-                                                    Confirmed
-                                                </button>
-                                            </li>
-                                            <li>
-                                                <button class="dropdown-item text-secondary">
-                                                    Pending
-                                                </button>
-                                            </li>
-                                            <li>
-                                                <button class="dropdown-item text-secondary">
-                                                    Rejected
-                                                </button>
-                                            </li>
-                                        </ul>
-                                    </div>
 
                                     <form class="table-src-form position-relative">
                                         <input type="text" class="form-control" placeholder="Search here..." />
@@ -1071,31 +1066,48 @@
     </div>
 
     <style>
-        @media (max-width: 767.98px) {
-            .top-products-filter-controls {
-                width: 100% !important;
+        <style>@media (max-width: 767.98px) {
+
+            .top-selling-filter-card,
+            .top-selling-filter-row {
+                width: 100%;
             }
 
-            .top-products-filter-controls>* {
-                width: 100% !important;
-                min-width: 100% !important;
+            .top-selling-filter-hint {
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
             }
-        }
 
-        .top-products-filter-btn:hover,
-        .top-products-filter-btn:focus,
-        .top-products-filter-btn:active {
-            background-color: #d94120 !important;
-            border-color: #d94120 !important;
-            color: #ffffff !important;
-        }
+            .top-selling-filter-form {
+                width: 100%;
+                flex-wrap: wrap !important;
+                gap: 0.75rem !important;
+            }
 
-        .top-products-reset-btn:hover,
-        .top-products-reset-btn:focus,
-        .top-products-reset-btn:active {
-            background-color: #ef4923 !important;
-            border-color: #ef4923 !important;
-            color: #ffffff !important;
+            .top-selling-date-field {
+                width: 100%;
+            }
+
+            .top-selling-date-control,
+            .top-selling-filter-input {
+                width: 100%;
+            }
+
+            .top-selling-filter-actions {
+                width: 100%;
+                flex-wrap: nowrap !important;
+            }
+
+            .top-selling-filter-actions .btn {
+                flex: 1 1 50%;
+                width: 50%;
+                min-width: 0;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                white-space: nowrap;
+            }
         }
     </style>
 @endsection
