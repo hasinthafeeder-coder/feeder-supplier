@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "29f226d7691a098f95414bf70b1c6d28",
+    "content-hash": "54fb49aa8169ec735b40e43c93c92226",
     "packages": [
         {
             "name": "brick/math",
@@ -510,23 +510,16 @@
         {
             "name": "feeder/core",
             "version": "dev-main",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/hasinthafeeder-coder/feeder-core.git",
-                "reference": "0d4d17739390f2b5d42c9b897d4e1e53a379b271"
-            },
             "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/hasinthafeeder-coder/feeder-core/zipball/0d4d17739390f2b5d42c9b897d4e1e53a379b271",
-                "reference": "0d4d17739390f2b5d42c9b897d4e1e53a379b271",
-                "shasum": ""
+                "type": "path",
+                "url": "../feeder-core",
+                "reference": "98f053933bac647bfc24f1eb81680fb2a8b11e56"
             },
             "require": {
                 "illuminate/database": "^13.0",
                 "illuminate/support": "^13.0",
                 "php": "^8.3"
             },
-            "default-branch": true,
             "type": "library",
             "extra": {
                 "laravel": {
@@ -544,11 +537,9 @@
                 "MIT"
             ],
             "description": "Shared business logic for the Feeder Dropshipping Platform",
-            "support": {
-                "source": "https://github.com/hasinthafeeder-coder/feeder-core/tree/main",
-                "issues": "https://github.com/hasinthafeeder-coder/feeder-core/issues"
-            },
-            "time": "2026-08-15T09:39:20+00:00"
+            "transport-options": {
+                "relative": true
+            }
         },
         {
             "name": "fruitcake/php-cors",
