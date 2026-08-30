@@ -1,6 +1,8 @@
 @extends('layout_main.app')
 
 @php
+    use Feeder\Core\Support\CurrencyDisplay;
+
     $product = $product ?? null;
     $images = $product?->images ?? collect();
     $variants = $product?->variants ?? collect();
@@ -18,12 +20,14 @@
         'INACTIVE' => 'Inactive',
         default => 'Draft',
     };
-    $enDescription = $product?->descriptionFor('en') ?? '';
-    $siDescription = $product?->descriptionFor('si') ?? '';
-    $taDescription = $product?->descriptionFor('ta') ?? '';
+    $productLanguages = $productLanguages ?? [];
+    $primaryLanguage = $productLanguages[0] ?? ['code' => 'en', 'label' => 'English'];
+    $primaryDescription = $product?->descriptionFor($primaryLanguage['code']) ?? '';
     $guidelineUuid = $product?->guidelineFile?->uuid;
     $guidelineName = $product?->guidelineFile?->original_name ?? 'product-guideline.pdf';
     $fallbackImage = asset('assets/images/product-details1.jpg');
+    $productCurrency = CurrencyDisplay::currencyFromMarket($product?->market);
+    $productMarketCountry = $product?->market?->country?->name;
 @endphp
 
 @section('content')
@@ -132,6 +136,11 @@
                     <div class="d-flex flex-wrap gap-2 mb-4">
                         <span class="badge bg-light text-body border">Product ID: #{{ $product->id }}</span>
                         <span class="badge bg-light text-body border">Category: {{ $product->category?->name ?? '—' }}</span>
+                        @if ($productMarketCountry)
+                            <span class="badge bg-light text-body border">Market: {{ $productMarketCountry }}</span>
+                        @else
+                            <span class="badge bg-warning-subtle text-warning border border-warning border-opacity-10">Market unavailable</span>
+                        @endif
                         @if ($product->system_visible)
                             <span class="badge bg-light text-body border">System Visible</span>
                         @endif
@@ -146,7 +155,7 @@
 
                     <div class="mb-4">
                         <p class="mb-0 fs-16 lh-1-8 text-body">
-                            {{ $enDescription !== '' ? $enDescription : 'No English description provided.' }}
+                            {{ $primaryDescription !== '' ? $primaryDescription : 'No ' . $primaryLanguage['label'] . ' description provided.' }}
                         </p>
                     </div>
 
@@ -155,7 +164,7 @@
                             <div class="border rounded-10 p-3 h-100 bg-light-subtle">
                                 <div class="text-muted fs-13 mb-1">Cost</div>
                                 <div class="fs-16 fw-medium">
-                                    {{ $primaryVariant ? 'LKR ' . number_format((float) $primaryVariant->cost, 2) : '—' }}
+                                    {{ $primaryVariant ? CurrencyDisplay::formatAmount($productCurrency, $primaryVariant->cost) : '—' }}
                                 </div>
                             </div>
                         </div>
@@ -163,7 +172,7 @@
                             <div class="border rounded-10 p-3 h-100 bg-light-subtle">
                                 <div class="text-muted fs-13 mb-1">Selling Price</div>
                                 <div class="fs-16 fw-medium">
-                                    {{ $primaryVariant ? 'LKR ' . number_format((float) $primaryVariant->selling_price, 2) : '—' }}
+                                    {{ $primaryVariant ? CurrencyDisplay::formatAmount($productCurrency, $primaryVariant->selling_price) : '—' }}
                                 </div>
                             </div>
                         </div>
@@ -171,7 +180,7 @@
                             <div class="border rounded-10 p-3 h-100 bg-light-subtle">
                                 <div class="text-muted fs-13 mb-1">Suggested Price</div>
                                 <div class="fs-16 fw-medium">
-                                    {{ $primaryVariant && $primaryVariant->suggested_price !== null ? 'LKR ' . number_format((float) $primaryVariant->suggested_price, 2) : '—' }}
+                                    {{ $primaryVariant && $primaryVariant->suggested_price !== null ? CurrencyDisplay::formatAmount($productCurrency, $primaryVariant->suggested_price) : '—' }}
                                 </div>
                             </div>
                         </div>
@@ -217,8 +226,8 @@
                                     <div class="d-flex flex-wrap justify-content-between gap-2">
                                         <span class="fw-medium">{{ $variant->name }}</span>
                                         <span class="text-body">
-                                            LKR {{ number_format((float) $variant->selling_price, 2) }}
-                                            · Cost {{ number_format((float) $variant->cost, 2) }}
+                                            {{ CurrencyDisplay::formatAmount($productCurrency, $variant->selling_price) }}
+                                            · Cost {{ CurrencyDisplay::formatAmount($productCurrency, $variant->cost) }}
                                             @if ($variant->barcode)
                                                 · {{ $variant->barcode }}
                                             @endif
@@ -281,44 +290,34 @@
             </div>
 
             <ul class="nav nav-tabs nav-tabs-separator" id="productInfoTabs" role="tablist">
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link active" id="info-en-tab" data-bs-toggle="tab" data-bs-target="#info-en"
-                        type="button" role="tab" aria-selected="true">
-                        English
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="info-si-tab" data-bs-toggle="tab" data-bs-target="#info-si"
-                        type="button" role="tab" aria-selected="false">
-                        Sinhala
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="info-ta-tab" data-bs-toggle="tab" data-bs-target="#info-ta"
-                        type="button" role="tab" aria-selected="false">
-                        Tamil
-                    </button>
-                </li>
+                @foreach ($productLanguages as $index => $language)
+                    <li class="nav-item" role="presentation">
+                        <button
+                            class="nav-link {{ $index === 0 ? 'active' : '' }}"
+                            id="info-{{ $language['code'] }}-tab"
+                            data-bs-toggle="tab"
+                            data-bs-target="#info-{{ $language['code'] }}"
+                            type="button"
+                            role="tab"
+                            aria-selected="{{ $index === 0 ? 'true' : 'false' }}"
+                        >
+                            {{ $language['label'] }}
+                        </button>
+                    </li>
+                @endforeach
             </ul>
 
             <div class="tab-content border border-top-0 rounded-bottom-10 p-4 bg-white">
-                <div class="tab-pane fade show active" id="info-en" role="tabpanel">
-                    <p class="mb-0 fs-16 lh-1-8 text-body">
-                        {{ $enDescription !== '' ? $enDescription : 'No English description provided.' }}
-                    </p>
-                </div>
-
-                <div class="tab-pane fade" id="info-si" role="tabpanel">
-                    <p class="mb-0 fs-16 lh-1-8 text-body">
-                        {{ $siDescription !== '' ? $siDescription : 'No Sinhala description provided.' }}
-                    </p>
-                </div>
-
-                <div class="tab-pane fade" id="info-ta" role="tabpanel">
-                    <p class="mb-0 fs-16 lh-1-8 text-body">
-                        {{ $taDescription !== '' ? $taDescription : 'No Tamil description provided.' }}
-                    </p>
-                </div>
+                @foreach ($productLanguages as $index => $language)
+                    @php
+                        $description = $product?->descriptionFor($language['code']) ?? '';
+                    @endphp
+                    <div class="tab-pane fade {{ $index === 0 ? 'show active' : '' }}" id="info-{{ $language['code'] }}" role="tabpanel">
+                        <p class="mb-0 fs-16 lh-1-8 text-body">
+                            {{ $description !== '' ? $description : 'No ' . $language['label'] . ' description provided.' }}
+                        </p>
+                    </div>
+                @endforeach
             </div>
         </div>
 

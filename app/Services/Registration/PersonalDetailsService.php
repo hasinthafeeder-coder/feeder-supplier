@@ -4,10 +4,16 @@ namespace App\Services\Registration;
 
 use Feeder\Core\Enums\ApplicationType;
 use Feeder\Core\Enums\UserStatus;
+use Feeder\Core\Models\Company;
+use Feeder\Core\Models\Portal;
 use Feeder\Core\Models\User;
 use Feeder\Core\Models\UserProfile;
+use Feeder\Core\Services\CountryRegistrationRuleService;
 use Feeder\Core\Services\FileService;
+use Feeder\Core\Services\SupplierOperationMarketService;
 use Feeder\Core\Services\UuidService;
+use Feeder\Core\Support\IdentityDocumentStorage;
+use Feeder\Core\Support\UserProfileSchema;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\UploadedFile;
@@ -21,13 +27,15 @@ class PersonalDetailsService
 {
     public function __construct(
         private readonly FileService $fileService,
+        private readonly CountryRegistrationRuleService $countryRegistrationRuleService,
+        private readonly SupplierOperationMarketService $operationMarketService,
     ) {}
 
     public function save(array $data): UserProfile
     {
         return DB::transaction(function () use ($data) {
             $user = User::query()
-                ->with('profile')
+                ->with(['profile', 'company.operationMarket.country'])
                 ->where('uuid', $data['user_uuid'])
                 ->first();
 
@@ -59,7 +67,15 @@ class PersonalDetailsService
                 $profile->user_id = $user->id;
             }
 
-            $this->assertNicIsUnique($data['nic'], $profile);
+            $countryRules = $this->countryRegistrationRuleService->assertSupplierOperationCountryMatches(
+                $user,
+                (string) $data['operation_country_id'],
+            );
+
+            $this->ensureSupplierCompanyWithOperationCountry($user, (string) $data['operation_country_id']);
+
+            $normalizedIdentityNumber = $countryRules->normalizeIdentityDocument($data['nic']);
+            $this->assertIdentityDocumentIsUnique($normalizedIdentityNumber, $profile);
 
             $profilePhotoUuid = $this->resolveProfilePhotoUuid(
                 $user,
@@ -70,7 +86,7 @@ class PersonalDetailsService
 
             $profile->first_name = $data['first_name'];
             $profile->last_name = $data['last_name'];
-            $profile->nic = $data['nic'];
+            IdentityDocumentStorage::applyToProfile($profile, $countryRules, $normalizedIdentityNumber);
             $profile->address = $data['address'];
             $profile->profile_photo = $profilePhotoUuid;
             $profile->profile_photo_uuid = $profilePhotoUuid;
@@ -80,18 +96,56 @@ class PersonalDetailsService
         });
     }
 
-    private function assertNicIsUnique(string $nic, UserProfile $profile): void
+    private function assertIdentityDocumentIsUnique(string $identityDocumentNumber, UserProfile $profile): void
     {
-        $nicQuery = UserProfile::query()->where('nic', $nic);
+        $identityQuery = UserProfile::query();
 
-        if ($profile->exists) {
-            $nicQuery->where('id', '!=', $profile->id);
+        if (UserProfileSchema::hasIdentityDocumentColumns()) {
+            $identityQuery->where(function ($query) use ($identityDocumentNumber): void {
+                $query->where('identity_document_number', $identityDocumentNumber)
+                    ->orWhere('nic', $identityDocumentNumber);
+            });
+        } else {
+            $identityQuery->where('nic', $identityDocumentNumber);
         }
 
-        if ($nicQuery->exists()) {
+        if ($profile->exists) {
+            $identityQuery->where('id', '!=', $profile->id);
+        }
+
+        if ($identityQuery->exists()) {
             throw ValidationException::withMessages([
-                'nic' => 'This NIC number is already registered.',
+                'nic' => 'This identity document number is already registered.',
             ]);
+        }
+    }
+
+    private function ensureSupplierCompanyWithOperationCountry(User $user, string $operationCountryUuid): void
+    {
+        $portal = Portal::query()->where('code', 'SUPPLIER')->first();
+        $portalId = $portal ? $portal->id : 1;
+
+        $company = $user->company;
+
+        if (! $company) {
+            $company = new Company();
+            $company->uuid = UuidService::generate();
+            $company->portal_id = $portalId;
+            $company->owner_user_id = $user->id;
+            $company->status = 'PENDING';
+            $company->phone = $user->phone ?? '';
+            $company->name = $company->name ?: 'Pending Registration';
+        }
+
+        if ($company->operation_market_id === null) {
+            $this->operationMarketService->assignOnRegistration($company, $operationCountryUuid);
+        }
+
+        $company->save();
+
+        if ($user->company_id !== $company->id) {
+            $user->company_id = $company->id;
+            $user->save();
         }
     }
 

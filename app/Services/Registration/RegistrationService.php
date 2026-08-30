@@ -4,14 +4,21 @@ namespace App\Services\Registration;
 
 use Feeder\Core\Enums\UserStatus;
 use Feeder\Core\Enums\UserType;
+use Feeder\Core\Models\Company;
+use Feeder\Core\Models\Portal;
 use Feeder\Core\Models\User;
+use Feeder\Core\Services\SupplierOperationMarketService;
 use Feeder\Core\Services\UuidService;
+use Feeder\Core\Support\IdentityDocumentStorage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
 class RegistrationService
 {
+    public function __construct(
+        private readonly SupplierOperationMarketService $operationMarketService,
+    ) {}
     public function resolveStepOneStatus(string $phone): array
     {
         /** @var User|null $user */
@@ -74,7 +81,8 @@ class RegistrationService
 
     public function createOrResumeRegistration(
         string $phone,
-        string $password
+        string $password,
+        ?string $operationCountryUuid = null,
     ): User {
         /** @var User|null $user */
         $user = User::query()
@@ -109,7 +117,11 @@ class RegistrationService
             $user->phone_verified_at = now();
             $user->save();
 
-            return $user;
+            if ($operationCountryUuid !== null) {
+                $this->ensureSupplierOperationCountry($user, $operationCountryUuid);
+            }
+
+            return $user->fresh(['company.operationMarket.country']);
         }
 
         /*
@@ -118,7 +130,7 @@ class RegistrationService
     |--------------------------------------------------------------------------
     */
 
-        return DB::transaction(function () use ($phone, $password): User {
+        return DB::transaction(function () use ($phone, $password, $operationCountryUuid): User {
 
             /** @var User $user */
             $user = User::query()->create([
@@ -139,7 +151,11 @@ class RegistrationService
 
             ]);
 
-            return $user;
+            if ($operationCountryUuid !== null) {
+                $this->ensureSupplierOperationCountry($user, $operationCountryUuid);
+            }
+
+            return $user->fresh(['company.operationMarket.country']);
         });
     }
 
@@ -206,7 +222,7 @@ class RegistrationService
 
     public function resolveCurrentStep(User $user): int
     {
-        $user->loadMissing(['profile', 'company.address', 'company.bankAccounts']);
+        $user->loadMissing(['profile', 'company.address', 'company.bankAccounts', 'company.operationMarket']);
 
         if (! $this->hasPasswordSet($user)) {
             return 1;
@@ -231,7 +247,7 @@ class RegistrationService
 
         return filled($profile->first_name)
             && filled($profile->last_name)
-            && filled($profile->nic)
+            && IdentityDocumentStorage::isIdentityComplete($profile)
             && filled($profile->address)
             && (
                 filled($profile->profile_photo)
@@ -248,7 +264,8 @@ class RegistrationService
         return filled($company->name)
             && filled($company->customer_care_phone)
             && filled($company->address?->address)
-            && filled($company->logo_uuid);
+            && filled($company->logo_uuid)
+            && filled($company->operation_market_id);
     }
 
     private function isBankStepComplete(?object $bankAccount): bool
@@ -267,7 +284,7 @@ class RegistrationService
     {
         /** @var User|null $user */
         $user = User::query()
-            ->with(['profile', 'company.address', 'company.bankAccounts'])
+            ->with(['profile', 'company.address', 'company.bankAccounts', 'company.operationMarket.country'])
             ->where('uuid', $userUuid)
             ->first();
 
@@ -277,10 +294,11 @@ class RegistrationService
             ]);
         }
 
-        if (
-            $user->status !== UserStatus::REGISTERING->value
-            && $user->status !== UserStatus::PENDING->value
-        ) {
+        $status = $user->status instanceof UserStatus
+            ? $user->status
+            : UserStatus::tryFrom((string) $user->status);
+
+        if (! in_array($status, [UserStatus::REGISTERING, UserStatus::PENDING], true)) {
             throw ValidationException::withMessages([
                 'user_uuid' => 'Invalid registration session.',
             ]);
@@ -290,7 +308,7 @@ class RegistrationService
         $company = $user->company;
         $companyAddress = $company?->address;
         $bankAccount = $company?->bankAccounts?->first();
-        $registrationSubmitted = $user->status === UserStatus::PENDING->value;
+        $registrationSubmitted = $status === UserStatus::PENDING;
 
         return [
             'user' => [
@@ -303,7 +321,9 @@ class RegistrationService
             'personal' => $profile ? [
                 'first_name' => $profile->first_name,
                 'last_name' => $profile->last_name,
-                'nic' => $profile->nic,
+                'nic' => IdentityDocumentStorage::storedDocumentNumber($profile),
+                'identity_document_type' => $profile->identity_document_type,
+                'identity_document_number' => $profile->identity_document_number,
                 'address' => $profile->address,
                 'profile_photo' => $profile->profile_photo,
                 'profile_photo_uuid' => $profile->profile_photo_uuid,
@@ -319,6 +339,8 @@ class RegistrationService
                 'logo_uploaded' => ! empty($company->logo_uuid),
                 'business_reg_pdf_uuid' => $company->business_reg_pdf_uuid,
                 'business_reg_pdf_uploaded' => ! empty($company->business_reg_pdf_uuid),
+                'operation_country_id' => $company->operationMarket?->country?->uuid,
+                'operation_country_name' => $company->operationMarket?->country?->name,
             ] : null,
             'bank' => $bankAccount ? [
                 'account_name' => $bankAccount->account_name,
@@ -384,5 +406,34 @@ class RegistrationService
 
             return $user;
         });
+    }
+
+    private function ensureSupplierOperationCountry(User $user, string $operationCountryUuid): void
+    {
+        $portal = Portal::query()->where('code', 'SUPPLIER')->first();
+        $portalId = $portal ? $portal->id : 1;
+
+        $company = $user->company;
+
+        if (! $company) {
+            $company = new Company();
+            $company->uuid = UuidService::generate();
+            $company->portal_id = $portalId;
+            $company->owner_user_id = $user->id;
+            $company->status = 'PENDING';
+            $company->phone = $user->phone ?? '';
+            $company->name = $company->name ?: 'Pending Registration';
+        }
+
+        if ($company->operation_market_id === null) {
+            $this->operationMarketService->assignOnRegistration($company, $operationCountryUuid);
+        }
+
+        $company->save();
+
+        if ($user->company_id !== $company->id) {
+            $user->company_id = $company->id;
+            $user->save();
+        }
     }
 }

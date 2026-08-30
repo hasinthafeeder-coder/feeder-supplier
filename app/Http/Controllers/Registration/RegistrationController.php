@@ -15,6 +15,8 @@ use App\Services\Registration\CompanyDetailsService;
 use App\Services\Registration\PersonalDetailsService;
 use App\Services\Registration\RegistrationOtpService;
 use App\Services\Registration\RegistrationService;
+use Feeder\Core\Services\CountryRegistrationRuleService;
+use Feeder\Core\Services\MarketService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\View\View;
 use Illuminate\Validation\ValidationException;
@@ -27,11 +29,19 @@ class RegistrationController extends Controller
         private readonly PersonalDetailsService $personalDetailsService,
         private readonly CompanyDetailsService $companyDetailsService,
         private readonly BankDetailsService $bankDetailsService,
+        private readonly MarketService $marketService,
+        private readonly CountryRegistrationRuleService $countryRegistrationRuleService,
     ) {}
 
     public function create(): View
     {
-        return view('pages.auth.register');
+        $operationCountries = $this->marketService->listOperationCountries();
+
+        return view('pages.auth.register', [
+            'operationCountries' => $operationCountries,
+            'countryValidationConfigs' => $this->countryRegistrationRuleService
+                ->clientValidationConfigsForCountries($operationCountries),
+        ]);
     }
 
     public function sendOtp(VerifyPhoneRequest $request): JsonResponse
@@ -84,6 +94,7 @@ class RegistrationController extends Controller
         $user = $this->registrationService->createOrResumeRegistration(
             phone: $phone,
             password: $request->string('password')->toString(),
+            operationCountryUuid: $request->string('operation_country_id')->toString(),
         );
 
         $this->registrationOtpService->clear($phone);
@@ -113,7 +124,9 @@ class RegistrationController extends Controller
             'profile' => [
                 'first_name' => $profile->first_name,
                 'last_name' => $profile->last_name,
-                'nic' => $profile->nic,
+                'nic' => $profile->identity_document_number ?? $profile->nic,
+                'identity_document_type' => $profile->identity_document_type,
+                'identity_document_number' => $profile->identity_document_number,
                 'address' => $profile->address,
                 'profile_photo' => $profile->profile_photo,
                 'profile_photo_uuid' => $profile->profile_photo_uuid,
@@ -146,6 +159,8 @@ class RegistrationController extends Controller
                 'address' => $company->address?->address,
                 'logo_uuid' => $company->logo_uuid,
                 'business_reg_pdf_uuid' => $company->business_reg_pdf_uuid,
+                'operation_country_id' => $company->operationMarket?->country?->uuid,
+                'operation_country_name' => $company->operationMarket?->country?->name,
             ],
         ]);
     }

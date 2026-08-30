@@ -9,7 +9,9 @@ use Feeder\Core\Models\Company;
 use Feeder\Core\Models\CompanyAddress;
 use Feeder\Core\Models\Portal;
 use Feeder\Core\Models\User;
+use Feeder\Core\Services\CountryRegistrationRuleService;
 use Feeder\Core\Services\FileService;
+use Feeder\Core\Services\SupplierOperationMarketService;
 use Feeder\Core\Services\UuidService;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
@@ -22,6 +24,8 @@ class CompanyDetailsService
 {
     public function __construct(
         private readonly FileService $fileService,
+        private readonly SupplierOperationMarketService $operationMarketService,
+        private readonly CountryRegistrationRuleService $countryRegistrationRuleService,
     ) {}
 
     public function save(array $data): Company
@@ -56,12 +60,38 @@ class CompanyDetailsService
                 $company->portal_id = $portalId;
                 $company->owner_user_id = $user->id;
                 $company->status = 'PENDING';
+            } elseif ($company->operation_market_id !== null) {
+                $this->operationMarketService->preventMutation(
+                    $company,
+                    $data['operation_market_id'] ?? $company->operation_market_id
+                );
             }
 
             $company->name = $data['name'];
             $company->phone = $user->phone ?? '';
             $company->customer_care_phone = $data['customer_care_phone'];
             $company->registration_number = $data['registration_number'] ?? null;
+
+            if ($company->operation_market_id === null) {
+                $operationCountryUuid = (string) ($data['operation_country_id'] ?? '');
+
+                if ($operationCountryUuid === '') {
+                    throw ValidationException::withMessages([
+                        'operation_country_id' => 'Operation country is required.',
+                    ]);
+                }
+
+                $this->operationMarketService->assignOnRegistration(
+                    $company,
+                    $operationCountryUuid
+                );
+            } elseif (filled($data['operation_country_id'] ?? null)) {
+                $this->countryRegistrationRuleService->assertSupplierOperationCountryMatches(
+                    $user,
+                    (string) $data['operation_country_id'],
+                );
+            }
+
             $company->save();
 
             if ($user->company_id !== $company->id) {
@@ -96,7 +126,7 @@ class CompanyDetailsService
 
             $company->save();
 
-            return $company->fresh(['address']);
+            return $company->fresh(['address', 'operationMarket.country']);
         });
     }
 

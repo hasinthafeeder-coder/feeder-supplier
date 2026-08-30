@@ -6,8 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Product\StoreProductRequest;
 use App\Services\FileServerService;
 use Feeder\Core\Enums\ProductStatus;
+use Feeder\Core\Models\Currency;
+use Feeder\Core\Models\Market;
 use Feeder\Core\Models\Product;
 use Feeder\Core\Models\ProductCategory;
+use Feeder\Core\Models\User;
+use Feeder\Core\Services\MarketDefaultCompanyCommissionService;
+use Feeder\Core\Services\ProductMarketLanguageService;
 use Feeder\Core\Services\ProductService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
@@ -20,6 +25,8 @@ class ProductController extends Controller
     public function __construct(
         private readonly ProductService $productService,
         private readonly FileServerService $fileServerService,
+        private readonly MarketDefaultCompanyCommissionService $marketCommissionService,
+        private readonly ProductMarketLanguageService $productLanguageService,
     ) {}
 
     public function index(): View
@@ -28,7 +35,7 @@ class ProductController extends Controller
 
         $products = Product::query()
             ->forSupplier($supplierId)
-            ->with(['category', 'variants', 'images.file'])
+            ->with(['category', 'variants', 'images.file', 'market.country', 'market.currency'])
             ->latest()
             ->get();
 
@@ -92,6 +99,8 @@ class ProductController extends Controller
         $product->load([
             'supplier.profile',
             'category',
+            'market.country',
+            'market.currency',
             'descriptions',
             'variants',
             'images.file',
@@ -100,6 +109,7 @@ class ProductController extends Controller
 
         return view('pages.products.details', [
             'product' => $product,
+            'productLanguages' => $this->productLanguageService->languagesForMarket($product->market),
         ]);
     }
 
@@ -109,6 +119,8 @@ class ProductController extends Controller
 
         $product->load([
             'category',
+            'market.country',
+            'market.currency',
             'descriptions',
             'variants',
             'images.file',
@@ -202,29 +214,87 @@ class ProductController extends Controller
             ->orderBy('name')
             ->get();
 
-        return [
+        $data = [
             'product' => $product,
             'categories' => $categories,
             'rootCategories' => $categories->filter(fn ($category) => empty($category->parent_id))->values(),
         ];
+
+        if ($product !== null) {
+            $data['productMarketContext'] = $this->productMarketContext($product);
+            $data['defaultCompanyCommission'] = $this->resolveDefaultCompanyCommission($product->market);
+            $data['productLanguages'] = $this->productLanguageService->languagesForMarket($product->market);
+        } else {
+            $supplierMarketContext = $this->resolveSupplierMarketContext();
+            $data['supplierMarketContext'] = $supplierMarketContext;
+            $data['defaultCompanyCommission'] = $supplierMarketContext['default_company_commission'];
+            $data['productLanguages'] = $this->productLanguageService->languagesForMarket($supplierMarketContext['market']);
+        }
+
+        return $data;
+    }
+
+    /**
+     * @return array{country_name: string, currency: Currency, market: Market, default_company_commission: string}
+     */
+    private function resolveSupplierMarketContext(): array
+    {
+        /** @var User $user */
+        $user = Auth::user();
+        $user->loadMissing('company.operationMarket.country', 'company.operationMarket.currency');
+
+        $market = $user->company?->operationMarket;
+
+        if (! $this->isMarketContextComplete($market)) {
+            abort(403, 'Your supplier operation market is not configured. Please contact support before creating products.');
+        }
+
+        return [
+            'country_name' => $market->country->name,
+            'currency' => $market->currency,
+            'market' => $market,
+            'default_company_commission' => $this->resolveDefaultCompanyCommission($market),
+        ];
+    }
+
+    private function resolveDefaultCompanyCommission(?Market $market): string
+    {
+        if ($market === null) {
+            abort(403, 'Market context is required to resolve default company commission.');
+        }
+
+        return $this->marketCommissionService->getDefaultCompanyCommission($market);
+    }
+
+    /**
+     * @return array{country_name: ?string, currency: ?Currency, is_complete: bool}
+     */
+    private function productMarketContext(Product $product): array
+    {
+        $product->loadMissing('market.country', 'market.currency');
+        $market = $product->market;
+
+        return [
+            'country_name' => $market?->country?->name,
+            'currency' => $market?->currency,
+            'is_complete' => $this->isMarketContextComplete($market),
+        ];
+    }
+
+    private function isMarketContextComplete(?Market $market): bool
+    {
+        return $market !== null
+            && $market->country !== null
+            && $market->currency !== null
+            && filled($market->currency->iso_code);
     }
 
     private function extractDescriptions(StoreProductRequest $request): array
     {
-        $descriptions = [];
-
-        foreach (['en', 'si', 'ta'] as $locale) {
-            $value = $request->input('descriptions.' . $locale);
-
-            if ($value !== null && $value !== '') {
-                $descriptions[] = [
-                    'language_code' => $locale,
-                    'description' => $value,
-                ];
-            }
-        }
-
-        return $descriptions;
+        return $this->productLanguageService->normalizeDescriptionsForMarket(
+            $request->resolvedProductMarket(),
+            (array) $request->input('descriptions', [])
+        );
     }
 
     private function extractVariants(StoreProductRequest $request): array
@@ -245,7 +315,7 @@ class ProductController extends Controller
                 'suggested_price' => $priceLocked
                     ? $sellingPrice
                     : ($variant['suggested_price'] ?? null),
-                'company_commission' => $variant['company_commission'] ?? 150.00,
+                'company_commission' => $variant['company_commission'] ?? null,
                 'sort_order' => $index,
                 'is_active' => true,
             ];

@@ -1,6 +1,8 @@
 ﻿@extends('layout_main.app')
 
 @php
+    use Feeder\Core\Support\CurrencyDisplay;
+
     $counts = $counts ?? ['all' => 0, 'active' => 0, 'draft' => 0, 'inactive' => 0];
     $products = $products ?? collect();
 @endphp
@@ -84,6 +86,7 @@
                                 @php
                                     $primaryVariant = $product->variants->first();
                                     $primaryImage = $product->images->firstWhere('is_primary', true) ?? $product->images->first();
+                                    $productCurrency = CurrencyDisplay::currencyFromMarket($product->market);
                                     $imageUuid = $primaryImage?->file_uuid;
                                     $statusValue = $product->status instanceof \Feeder\Core\Enums\ProductStatus
                                         ? $product->status->value
@@ -120,12 +123,22 @@
                                                 <div class="mt-1">
                                                     <span class="badge {{ $statusBadgeClass }}">{{ $statusValue }}</span>
                                                 </div>
+                                                <div class="mt-1">
+                                                    @if ($product->market?->country?->iso_code && $productCurrency)
+                                                        <span class="badge bg-light text-body border">
+                                                            {{ $product->market->country->iso_code }} &bull;
+                                                            {{ CurrencyDisplay::inputLabel($productCurrency) }}
+                                                        </span>
+                                                    @else
+                                                        <span class="badge bg-warning-subtle text-warning border border-warning border-opacity-10">Market unavailable</span>
+                                                    @endif
+                                                </div>
                                             </div>
                                         </div>
                                     </td>
                                     <td class="text-body">{{ $product->category?->name ?? '—' }}</td>
                                     <td class="text-body">
-                                        {{ $primaryVariant ? 'LKR ' . number_format((float) $primaryVariant->selling_price, 2) : '—' }}
+                                        {{ $primaryVariant ? CurrencyDisplay::formatAmount($productCurrency, $primaryVariant->selling_price) : '—' }}
                                     </td>
                                     <td class="text-body">—</td>
                                     <td class="text-body">—</td>

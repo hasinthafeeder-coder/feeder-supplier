@@ -545,13 +545,29 @@
                                     <div class="row">
                                         <div class="col-lg-12">
                                             <div class="form-group mb-4">
+                                                <label class="label fs-16">Operation Country *</label>
+                                                <div class="position-relative">
+                                                    <i class="ri-global-line input-icon"></i>
+                                                    <select id="stepOneOperationCountryId" name="operation_country_id"
+                                                        class="form-select text-dark h-55 form-control-icon">
+                                                        <option value="" selected disabled>Select your country</option>
+                                                        @foreach ($operationCountries as $country)
+                                                            <option value="{{ $country->uuid }}">{{ $country->name }}</option>
+                                                        @endforeach
+                                                    </select>
+                                                </div>
+                                                <div id="stepOneOperationCountryIdError" class="field-error"></div>
+                                            </div>
+                                        </div>
+                                        <div class="col-lg-12">
+                                            <div class="form-group mb-4">
                                                 <label class="label fs-16">Contact Number *</label>
                                                 <div class="position-relative">
                                                     <i class="ri-phone-line input-icon"></i>
                                                     <input id="contactNumber" name="phone" type="text"
                                                         class="form-control text-dark h-55 form-control-icon"
-                                                        placeholder="Enter 10 digit contact number" maxlength="10"
-                                                        inputmode="numeric" autocomplete="tel">
+                                                        placeholder="Enter contact number" maxlength="13"
+                                                        inputmode="tel" autocomplete="tel">
                                                 </div>
                                                 <div id="contactNumberError" class="field-error"></div>
                                             </div>
@@ -670,12 +686,12 @@
                                                 </div>
                                                 <div class="col-lg-12">
                                                     <div class="form-group mb-4">
-                                                        <label class="label fs-16">NIC No *</label>
+                                                        <label id="nicLabel" class="label fs-16">Identity Document Number *</label>
                                                         <div class="position-relative">
                                                             <i class="ri-id-card-line input-icon"></i>
                                                             <input id="nic" name="nic" type="text"
                                                                 class="form-control text-dark h-55 form-control-icon"
-                                                                placeholder="Enter NIC number" maxlength="12"
+                                                                placeholder="Enter identity document number" maxlength="12"
                                                                 autocomplete="off">
                                                         </div>
                                                         <div id="nicError" class="field-error"></div>
@@ -786,10 +802,29 @@
                                                             <input id="customerCarePhone" name="customer_care_phone"
                                                                 type="tel"
                                                                 class="form-control text-dark h-55 form-control-icon"
-                                                                placeholder="Enter customer care number" maxlength="10"
+                                                                placeholder="Enter customer care number" maxlength="13"
                                                                 autocomplete="tel">
                                                         </div>
                                                         <div id="customerCarePhoneError" class="field-error"></div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-lg-12">
+                                                    <div class="form-group mb-4">
+                                                        <div id="operationCountryLockedNotice" class="text-gray-light fs-14 mb-2 d-none">
+                                                            Operation country was selected during phone verification and cannot be changed.
+                                                        </div>
+                                                        <label class="label fs-16">Operation Country *</label>
+                                                        <div class="position-relative">
+                                                            <i class="ri-global-line input-icon"></i>
+                                                            <select id="operationCountryId" name="operation_country_id"
+                                                                class="form-select text-dark h-55 form-control-icon">
+                                                                <option value="" selected disabled>Select your country</option>
+                                                                @foreach ($operationCountries as $country)
+                                                                    <option value="{{ $country->uuid }}">{{ $country->name }}</option>
+                                                                @endforeach
+                                                            </select>
+                                                        </div>
+                                                        <div id="operationCountryIdError" class="field-error"></div>
                                                     </div>
                                                 </div>
                                                 <div class="col-lg-12">
@@ -999,6 +1034,9 @@
     <script src="{{ asset('assets/js/custom/custom.js') }}"></script>
 
     <script>
+        window.countryValidationConfigs = @json($countryValidationConfigs ?? []);
+    </script>
+    <script>
         document.addEventListener('DOMContentLoaded', function() {
             const themeToggleButton = document.getElementById('switch-toggle');
             const authThemeIcon = document.getElementById('authThemeIcon');
@@ -1044,6 +1082,14 @@
             const companyAddress = document.getElementById('companyAddress');
             const customerCarePhone = document.getElementById('customerCarePhone');
             const companyRegNumber = document.getElementById('companyRegNumber');
+            const operationCountryId = document.getElementById('operationCountryId');
+            const stepOneOperationCountryId = document.getElementById('stepOneOperationCountryId');
+            const stepOneOperationCountryIdError = document.getElementById('stepOneOperationCountryIdError');
+            const operationCountryLockedNotice = document.getElementById('operationCountryLockedNotice');
+            const nicLabel = document.getElementById('nicLabel');
+            const countryValidationMap = Object.fromEntries(
+                (window.countryValidationConfigs || []).map((entry) => [entry.country_uuid, entry])
+            );
             const accountName = document.getElementById('accountName');
             const bankName = document.getElementById('bankName');
             const branchName = document.getElementById('branchName');
@@ -1059,7 +1105,198 @@
             let profilePhotoUuid = null;
             let companyLogoUuid = null;
             let businessRegPdfUuid = null;
-            let registeringUserUuid = localStorage.getItem('feeder_reseller_user_uuid') || null;
+            let registeringUserUuid = localStorage.getItem('feeder_supplier_user_uuid') || null;
+            let operationCountryLocked = false;
+
+            function getSelectedOperationCountryId() {
+                if (operationCountryId && operationCountryId.value) {
+                    return operationCountryId.value;
+                }
+
+                if (stepOneOperationCountryId && stepOneOperationCountryId.value) {
+                    return stepOneOperationCountryId.value;
+                }
+
+                return '';
+            }
+
+            function getCountryValidationConfig(countryUuid) {
+                return countryValidationMap[countryUuid] || null;
+            }
+
+            function getActiveCountryRules() {
+                const countryUuid = getSelectedOperationCountryId();
+                const config = getCountryValidationConfig(countryUuid);
+
+                return config?.validation || {
+                    iso_code: '',
+                    identity_document_label: 'Identity Document Number',
+                    identity_document_max_length: 50,
+                    phone_max_length: 15,
+                    customer_care_phone_max_length: 15,
+                };
+            }
+
+            function normalizeDigits(value) {
+                return String(value || '').replace(/\D/g, '');
+            }
+
+            function normalizeSriLankaPhone(value) {
+                let digits = normalizeDigits(value);
+
+                if (digits.startsWith('94') && digits.length === 11) {
+                    digits = '0' + digits.slice(2);
+                }
+
+                return digits;
+            }
+
+            function isValidSriLankaPhone(value) {
+                const digits = normalizeSriLankaPhone(value);
+
+                return /^0[1-9]\d{8}$/.test(digits);
+            }
+
+            function normalizeMalaysiaPhone(value) {
+                let digits = normalizeDigits(value);
+
+                if (digits.startsWith('60')) {
+                    digits = '0' + digits.slice(2);
+                }
+
+                return digits;
+            }
+
+            function isValidMalaysiaPhone(value) {
+                const digits = normalizeMalaysiaPhone(value);
+
+                return /^01\d{8,9}$/.test(digits);
+            }
+
+            function normalizePhoneForCountry(value, isoCode) {
+                if (isoCode === 'MY') {
+                    return normalizeMalaysiaPhone(value);
+                }
+
+                return normalizeSriLankaPhone(value);
+            }
+
+            function isValidPhoneForCountry(value, isoCode) {
+                if (isoCode === 'MY') {
+                    return isValidMalaysiaPhone(value);
+                }
+
+                if (isoCode === 'LK') {
+                    return isValidSriLankaPhone(value);
+                }
+
+                return normalizeDigits(value).length >= 8;
+            }
+
+            function isValidMalaysianBirthDate(yymmdd) {
+                if (!/^\d{6}$/.test(yymmdd)) {
+                    return false;
+                }
+
+                const year = parseInt(yymmdd.slice(0, 2), 10);
+                const month = parseInt(yymmdd.slice(2, 4), 10);
+                const day = parseInt(yymmdd.slice(4, 6), 10);
+                const currentTwoDigitYear = new Date().getFullYear() % 100;
+                const fullYear = year <= currentTwoDigitYear ? 2000 + year : 1900 + year;
+                const date = new Date(fullYear, month - 1, day);
+
+                return date.getFullYear() === fullYear
+                    && date.getMonth() === month - 1
+                    && date.getDate() === day;
+            }
+
+            function isValidIdentityForCountry(value, isoCode) {
+                if (isoCode === 'MY') {
+                    const digits = normalizeDigits(value);
+
+                    return /^\d{12}$/.test(digits) && isValidMalaysianBirthDate(digits.slice(0, 6));
+                }
+
+                const normalized = String(value || '').toUpperCase().replace(/[^0-9VX]/g, '');
+
+                return /^([0-9]{9}[VX]|[0-9]{12})$/.test(normalized);
+            }
+
+            function syncOperationCountryFields(lock = false) {
+                const selectedCountryId = stepOneOperationCountryId?.value || operationCountryId?.value || '';
+
+                if (stepOneOperationCountryId && operationCountryId && selectedCountryId) {
+                    stepOneOperationCountryId.value = selectedCountryId;
+                    operationCountryId.value = selectedCountryId;
+                }
+
+                operationCountryLocked = lock;
+
+                if (operationCountryId) {
+                    operationCountryId.disabled = lock;
+                }
+
+                if (stepOneOperationCountryId) {
+                    stepOneOperationCountryId.disabled = lock;
+                }
+
+                if (operationCountryLockedNotice) {
+                    operationCountryLockedNotice.classList.toggle('d-none', !lock);
+                }
+
+                applyCountryValidationUi();
+            }
+
+            function applyCountryValidationUi() {
+                const rules = getActiveCountryRules();
+                const phoneMaxLength = rules.phone_max_length || 15;
+                const identityMaxLength = rules.identity_document_max_length || 50;
+                const customerCareMaxLength = rules.customer_care_phone_max_length || 15;
+
+                if (nicLabel) {
+                    nicLabel.textContent = `${rules.identity_document_label || 'Identity Document Number'} *`;
+                }
+
+                if (nic) {
+                    nic.maxLength = identityMaxLength;
+                    nic.placeholder = `Enter ${(rules.identity_document_label || 'identity document number').toLowerCase()}`;
+                }
+
+                if (contactNumber) {
+                    contactNumber.maxLength = phoneMaxLength;
+                }
+
+                if (customerCarePhone) {
+                    customerCarePhone.maxLength = customerCareMaxLength;
+                }
+            }
+
+            function validateOperationCountrySelectionField() {
+                const field = stepOneOperationCountryId || operationCountryId;
+                const errorTarget = stepOneOperationCountryIdError || document.getElementById('operationCountryIdError');
+
+                if (!field || operationCountryLocked) {
+                    if (errorTarget) {
+                        clearFieldError(field);
+                    }
+
+                    return getSelectedOperationCountryId() !== '';
+                }
+
+                if (!field.value) {
+                    if (errorTarget && field) {
+                        setFieldError(field, 'Operation country is required.');
+                    }
+
+                    return false;
+                }
+
+                if (field) {
+                    clearFieldError(field);
+                }
+
+                return true;
+            }
 
             function syncThemeIcon() {
                 if (!themeToggleButton || !authThemeIcon) {
@@ -1232,7 +1469,9 @@
             }
 
             function clearStepOneValidation() {
-                [contactNumber, otpCode, passwordInput, verifyPasswordInput].forEach(clearFieldError);
+                [stepOneOperationCountryId, contactNumber, otpCode, passwordInput, verifyPasswordInput]
+                    .filter(Boolean)
+                    .forEach(clearFieldError);
             }
 
             function showStepOneAlert(message) {
@@ -1278,23 +1517,30 @@
                 registeringUserUuid = uuid || null;
 
                 if (registeringUserUuid) {
-                    localStorage.setItem('feeder_reseller_user_uuid', registeringUserUuid);
+                    localStorage.setItem('feeder_supplier_user_uuid', registeringUserUuid);
                 } else {
-                    localStorage.removeItem('feeder_reseller_user_uuid');
+                    localStorage.removeItem('feeder_supplier_user_uuid');
                 }
             }
 
             function validatePhoneField() {
-                const normalized = contactNumber.value.replace(/\D/g, '').slice(0, 10);
+                const rules = getActiveCountryRules();
+                const normalized = normalizePhoneForCountry(contactNumber.value, rules.iso_code);
                 contactNumber.value = normalized;
+
+                if (!validateOperationCountrySelectionField()) {
+                    return false;
+                }
 
                 if (normalized.length === 0) {
                     setFieldError(contactNumber, 'Contact number is required.');
                     return false;
                 }
 
-                if (!/^\d{10}$/.test(normalized)) {
-                    setFieldError(contactNumber, 'Enter a valid 10 digit contact number.');
+                if (!isValidPhoneForCountry(normalized, rules.iso_code)) {
+                    setFieldError(contactNumber, rules.iso_code === 'MY'
+                        ? 'Please enter a valid phone number for Malaysia.'
+                        : 'Please enter a valid phone number for Sri Lanka.');
                     return false;
                 }
 
@@ -1389,7 +1635,9 @@
             }
 
             function updateStepOneControls() {
-                const phoneValid = /^\d{10}$/.test(contactNumber.value);
+                const rules = getActiveCountryRules();
+                const phoneValid = isValidPhoneForCountry(contactNumber.value, rules.iso_code)
+                    && getSelectedOperationCountryId() !== '';
                 const otpVisible = otpStep.classList.contains('is-visible');
                 const otpValid = /^\d{4,6}$/.test(otpCode.value);
                 const passwordValid = !stepOneRequiresPassword || (
@@ -1533,15 +1781,23 @@
             }
 
             function validateNicField() {
-                nic.value = nic.value.toUpperCase().replace(/[^0-9VX]/g, '').slice(0, 12);
+                const rules = getActiveCountryRules();
+
+                if (rules.iso_code === 'MY') {
+                    nic.value = normalizeDigits(nic.value).slice(0, rules.identity_document_max_length || 12);
+                } else {
+                    nic.value = nic.value.toUpperCase().replace(/[^0-9VX]/g, '').slice(0, rules.identity_document_max_length || 12);
+                }
 
                 if (nic.value.length === 0) {
-                    setFieldError(nic, 'NIC number is required.');
+                    setFieldError(nic, 'Identity document number is required.');
                     return false;
                 }
 
-                if (!/^([0-9]{9}[VX]|[0-9]{12})$/.test(nic.value)) {
-                    setFieldError(nic, 'Enter a valid NIC number.');
+                if (!isValidIdentityForCountry(nic.value, rules.iso_code)) {
+                    setFieldError(nic, rules.iso_code === 'MY'
+                        ? 'Please enter a valid Malaysian identity document number.'
+                        : 'Please enter a valid Sri Lankan NIC number.');
                     return false;
                 }
 
@@ -1577,13 +1833,14 @@
             }
 
             function validateStepTwoForm() {
+                const countryValid = validateOperationCountrySelectionField();
                 const firstNameValid = validateFirstNameField();
                 const lastNameValid = validateLastNameField();
                 const addressValid = validateAddressField();
                 const nicValid = validateNicField();
                 const photoValid = validateProfilePhotoField();
 
-                return firstNameValid && lastNameValid && addressValid && nicValid && photoValid;
+                return countryValid && firstNameValid && lastNameValid && addressValid && nicValid && photoValid;
             }
 
             function applyStepTwoServerErrors(payload) {
@@ -1652,6 +1909,11 @@
                     companyRegNumber.value = company.registration_number || '';
                 }
 
+                if (operationCountryId && company.operation_country_id) {
+                    operationCountryId.value = company.operation_country_id;
+                    syncOperationCountryFields(true);
+                }
+
                 if (company.logo_uuid) {
                     applySavedCompanyLogo(company.logo_uuid);
                 }
@@ -1707,7 +1969,8 @@
             }
 
             function validateCustomerCarePhoneField() {
-                const normalized = customerCarePhone.value.replace(/\D/g, '').slice(0, 10);
+                const rules = getActiveCountryRules();
+                const normalized = normalizePhoneForCountry(customerCarePhone.value, rules.iso_code);
                 customerCarePhone.value = normalized;
 
                 if (normalized.length === 0) {
@@ -1715,8 +1978,10 @@
                     return false;
                 }
 
-                if (!/^\d{10}$/.test(normalized)) {
-                    setFieldError(customerCarePhone, 'Enter a valid 10 digit customer care number.');
+                if (!isValidPhoneForCountry(normalized, rules.iso_code)) {
+                    setFieldError(customerCarePhone, rules.iso_code === 'MY'
+                        ? 'Please enter a valid customer care phone number for Malaysia.'
+                        : 'Please enter a valid customer care phone number for Sri Lanka.');
                     return false;
                 }
 
@@ -1779,14 +2044,23 @@
                 return true;
             }
 
+            function validateOperationCountryField() {
+                if (operationCountryLocked) {
+                    return getSelectedOperationCountryId() !== '';
+                }
+
+                return validateOperationCountrySelectionField();
+            }
+
             function validateStepThreeForm() {
                 const nameValid = validateCompanyNameField();
                 const addressValid = validateCompanyAddressField();
                 const phoneValid = validateCustomerCarePhoneField();
+                const countryValid = validateOperationCountryField();
                 const logoValid = validateCompanyLogoField();
                 const brValid = validateBusinessRegPdfField();
 
-                return nameValid && addressValid && phoneValid && logoValid && brValid;
+                return nameValid && addressValid && phoneValid && countryValid && logoValid && brValid;
             }
 
             function applyStepThreeServerErrors(payload) {
@@ -1810,6 +2084,10 @@
 
                 if (Array.isArray(errors.registration_number) && errors.registration_number[0] && companyRegNumber) {
                     setFieldError(companyRegNumber, errors.registration_number[0]);
+                }
+
+                if (Array.isArray(errors.operation_country_id) && errors.operation_country_id[0] && operationCountryId) {
+                    setFieldError(operationCountryId, errors.operation_country_id[0]);
                 }
 
                 if (Array.isArray(errors.logo) && errors.logo[0]) {
@@ -1854,6 +2132,10 @@
                 fillPersonalDraft(draft.personal);
                 fillCompanyDraft(draft.company);
                 fillBankDraft(draft.bank);
+
+                if (draft.company?.operation_country_id) {
+                    syncOperationCountryFields(true);
+                }
 
                 const targetStep = Number(preferredStep || draft.current_step || 2);
                 setStepState(Math.min(Math.max(targetStep, 2), 4));
@@ -1912,6 +2194,28 @@
                 updateStepOneControls();
             });
 
+            if (stepOneOperationCountryId) {
+                stepOneOperationCountryId.addEventListener('change', function() {
+                    syncOperationCountryFields(false);
+                    validateOperationCountrySelectionField();
+                    validatePhoneField();
+                    updateStepOneControls();
+                });
+            }
+
+            if (operationCountryId) {
+                operationCountryId.addEventListener('change', function() {
+                    if (!operationCountryLocked) {
+                        syncOperationCountryFields(false);
+                    }
+
+                    applyCountryValidationUi();
+                    validateCustomerCarePhoneField();
+                });
+            }
+
+            applyCountryValidationUi();
+
             contactNumber.addEventListener('blur', validatePhoneField);
             otpCode.addEventListener('input', function() {
                 validateOtpField();
@@ -1948,6 +2252,7 @@
                 try {
                     const response = await postRegistration('{{ route('supplier.registration.send-otp') }}', {
                         phone: contactNumber.value,
+                        operation_country_id: getSelectedOperationCountryId(),
                     });
 
                     showOtpSection();
@@ -1987,6 +2292,7 @@
                     const response = await postRegistration('{{ route('supplier.registration.verify-otp') }}', {
                         phone: contactNumber.value,
                         otp: otpCode.value,
+                        operation_country_id: getSelectedOperationCountryId(),
                     });
 
                     if (response.alert_message) {
@@ -2066,11 +2372,13 @@
                         phone: contactNumber.value,
                         password: passwordInput.value,
                         password_confirmation: verifyPasswordInput.value,
+                        operation_country_id: getSelectedOperationCountryId(),
                     });
 
                     persistRegistrationUuid(response.user.uuid);
                     userRegistered = true;
                     stepOneRequiresPassword = false;
+                    syncOperationCountryFields(true);
 
                     if (personalPhone) {
                         personalPhone.value = contactNumber.value;
@@ -2138,10 +2446,11 @@
                     try {
                         const formData = new FormData();
                         formData.append('user_uuid', registeringUserUuid);
+                        formData.append('operation_country_id', getSelectedOperationCountryId());
                         formData.append('first_name', firstName.value.trim());
                         formData.append('last_name', lastName.value.trim());
                         formData.append('address', address.value.trim());
-                        formData.append('nic', nic.value.trim().toUpperCase());
+                        formData.append('nic', nic.value.trim());
 
                         const hasNewPhoto = personalImageInput.files && personalImageInput.files[0];
 
@@ -2199,6 +2508,10 @@
                         formData.append('name', companyName.value.trim());
                         formData.append('address', companyAddress.value.trim());
                         formData.append('customer_care_phone', customerCarePhone.value.trim());
+
+                        if (operationCountryId && operationCountryId.value) {
+                            formData.append('operation_country_id', operationCountryId.value);
+                        }
 
                         if (companyRegNumber && companyRegNumber.value.trim()) {
                             formData.append('registration_number', companyRegNumber.value.trim());

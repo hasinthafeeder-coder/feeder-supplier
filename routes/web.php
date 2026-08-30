@@ -42,19 +42,43 @@ Route::middleware('auth')->group(function () {
         ->where('uuid', '[A-Za-z0-9]+')
         ->name('files.view');
 
-    Route::get('/products', [\App\Http\Controllers\Product\ProductController::class, 'index'])->name('products');
-    Route::get('/products/index', [\App\Http\Controllers\Product\ProductController::class, 'index'])->name('products.index');
-    Route::get('/products/list', [\App\Http\Controllers\Product\ProductController::class, 'index'])->name('products.list');
-    Route::get('/products/create', [\App\Http\Controllers\Product\ProductController::class, 'create'])->name('products.create');
-    Route::post('/products', [\App\Http\Controllers\Product\ProductController::class, 'store'])->name('products.store');
+    Route::get('/products', [\App\Http\Controllers\Product\ProductController::class, 'index'])
+        ->middleware('permission:products.view')
+        ->name('products');
+    Route::get('/products/index', [\App\Http\Controllers\Product\ProductController::class, 'index'])
+        ->middleware('permission:products.view')
+        ->name('products.index');
+    Route::get('/products/list', [\App\Http\Controllers\Product\ProductController::class, 'index'])
+        ->middleware('permission:products.view')
+        ->name('products.list');
+    Route::get('/products/create', [\App\Http\Controllers\Product\ProductController::class, 'create'])
+        ->middleware('permission:products.create')
+        ->name('products.create');
+    Route::post('/products', [\App\Http\Controllers\Product\ProductController::class, 'store'])
+        ->middleware('permission:products.create')
+        ->name('products.store');
 
-    Route::get('/products/{product}', [\App\Http\Controllers\Product\ProductController::class, 'show'])->name('products.show');
-    Route::get('/products/{product}/details', [\App\Http\Controllers\Product\ProductController::class, 'show'])->name('products.details');
-    Route::get('/products/{product}/edit', [\App\Http\Controllers\Product\ProductController::class, 'edit'])->name('products.edit');
-    Route::put('/products/{product}', [\App\Http\Controllers\Product\ProductController::class, 'update'])->name('products.update');
-    Route::delete('/products/{product}', [\App\Http\Controllers\Product\ProductController::class, 'destroy'])->name('products.destroy');
-    Route::post('/products/{product}/deactivate', [\App\Http\Controllers\Product\ProductController::class, 'deactivate'])->name('products.deactivate');
-    Route::post('/products/{product}/activate', [\App\Http\Controllers\Product\ProductController::class, 'activate'])->name('products.activate');
+    Route::get('/products/{product}', [\App\Http\Controllers\Product\ProductController::class, 'show'])
+        ->middleware('permission:products.view')
+        ->name('products.show');
+    Route::get('/products/{product}/details', [\App\Http\Controllers\Product\ProductController::class, 'show'])
+        ->middleware('permission:products.view')
+        ->name('products.details');
+    Route::get('/products/{product}/edit', [\App\Http\Controllers\Product\ProductController::class, 'edit'])
+        ->middleware('permission:products.update')
+        ->name('products.edit');
+    Route::put('/products/{product}', [\App\Http\Controllers\Product\ProductController::class, 'update'])
+        ->middleware('permission:products.update')
+        ->name('products.update');
+    Route::delete('/products/{product}', [\App\Http\Controllers\Product\ProductController::class, 'destroy'])
+        ->middleware('permission:products.delete')
+        ->name('products.destroy');
+    Route::post('/products/{product}/deactivate', [\App\Http\Controllers\Product\ProductController::class, 'deactivate'])
+        ->middleware('permission:products.update')
+        ->name('products.deactivate');
+    Route::post('/products/{product}/activate', [\App\Http\Controllers\Product\ProductController::class, 'activate'])
+        ->middleware('permission:products.update')
+        ->name('products.activate');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');

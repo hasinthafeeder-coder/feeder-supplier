@@ -40,7 +40,7 @@ class FileServerService
         return $this->uploadAndResolve(
             $file,
             'PRODUCT',
-            FileCategory::BUSINESS_REGISTRATION->value,
+            FileCategory::PRODUCT_GUIDELINE->value,
             'guideline',
         );
     }
