@@ -80,6 +80,28 @@ Route::middleware('auth')->group(function () {
         ->middleware('permission:products.update')
         ->name('products.activate');
 
+    Route::get('/grns', [\App\Http\Controllers\Grn\GoodsReceivedNoteController::class, 'index'])
+        ->middleware('permission:grns.view')
+        ->name('grns.index');
+    Route::get('/grns/create', [\App\Http\Controllers\Grn\GoodsReceivedNoteController::class, 'create'])
+        ->middleware('permission:grns.create')
+        ->name('grns.create');
+    Route::post('/grns', [\App\Http\Controllers\Grn\GoodsReceivedNoteController::class, 'store'])
+        ->middleware('permission:grns.create')
+        ->name('grns.store');
+    Route::get('/grns/{grn}', [\App\Http\Controllers\Grn\GoodsReceivedNoteController::class, 'show'])
+        ->middleware('permission:grns.view')
+        ->name('grns.show');
+    Route::get('/grns/{grn}/edit', [\App\Http\Controllers\Grn\GoodsReceivedNoteController::class, 'edit'])
+        ->middleware('permission:grns.update')
+        ->name('grns.edit');
+    Route::put('/grns/{grn}', [\App\Http\Controllers\Grn\GoodsReceivedNoteController::class, 'update'])
+        ->middleware('permission:grns.update')
+        ->name('grns.update');
+    Route::delete('/grns/{grn}', [\App\Http\Controllers\Grn\GoodsReceivedNoteController::class, 'destroy'])
+        ->middleware('permission:grns.delete')
+        ->name('grns.destroy');
+
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');

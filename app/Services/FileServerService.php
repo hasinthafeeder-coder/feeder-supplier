@@ -46,6 +46,19 @@ class FileServerService
     }
 
     /**
+     * @return array{id: int, uuid: string}
+     */
+    public function uploadInvoice(UploadedFile $file): array
+    {
+        return $this->uploadAndResolve(
+            $file,
+            'GRN',
+            FileCategory::INVOICE->value,
+            'invoice',
+        );
+    }
+
+    /**
      * @param  array<int, UploadedFile|null>  $files
      * @return array<int, array{id: int, uuid: string}>
      */
