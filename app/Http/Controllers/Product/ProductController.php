@@ -303,18 +303,16 @@ class ProductController extends Controller
         $priceLocked = $request->boolean('price_locked');
 
         foreach ((array) $request->input('variants', []) as $index => $variant) {
-            $sellingPrice = $variant['selling_price'] ?? 0;
-
             $variants[] = [
                 'id' => $variant['id'] ?? null,
                 'name' => $variant['name'] ?? null,
                 'barcode' => $variant['barcode'] ?? null,
                 'cost' => $variant['cost'] ?? 0,
-                'selling_price' => $sellingPrice,
+                'selling_price' => $variant['selling_price'] ?? 0,
                 'weight' => $variant['weight'] ?? null,
-                'suggested_price' => $priceLocked
-                    ? $sellingPrice
-                    : ($variant['suggested_price'] ?? null),
+                'suggested_price' => $priceLocked ? ($variant['suggested_price'] ?? null) : null,
+                'suggested_price_min' => $priceLocked ? null : ($variant['suggested_price_min'] ?? null),
+                'suggested_price_max' => $priceLocked ? null : ($variant['suggested_price_max'] ?? null),
                 'company_commission' => $variant['company_commission'] ?? null,
                 'sort_order' => $index,
                 'is_active' => true,

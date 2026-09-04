@@ -10,6 +10,7 @@ use Feeder\Core\Models\Product;
 use Feeder\Core\Services\GoodsReceivedNoteService;
 use Feeder\Core\Support\CurrencyDisplay;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 
@@ -20,18 +21,29 @@ class GoodsReceivedNoteController extends Controller
         private readonly FileServerService $fileServerService,
     ) {}
 
-    public function index(): View
+    public function index(Request $request): View
     {
         $supplierId = (int) Auth::id();
+        $search = trim((string) $request->input('search', ''));
 
         $grns = GoodsReceivedNote::query()
             ->forSupplier($supplierId)
             ->withCount('items')
+            ->when($search !== '', function ($query) use ($search): void {
+                $query->where(function ($inner) use ($search): void {
+                    $inner->where('grn_number', 'like', "%{$search}%")
+                        ->orWhere('invoice_number', 'like', "%{$search}%");
+                });
+            })
             ->latest()
-            ->get();
+            ->paginate(15)
+            ->withQueryString();
 
         return view('pages.grns.list', [
             'grns' => $grns,
+            'filters' => [
+                'search' => $search,
+            ],
         ]);
     }
 

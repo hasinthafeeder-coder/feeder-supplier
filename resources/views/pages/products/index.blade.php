@@ -658,50 +658,140 @@
                 return !!(priceLockInput && priceLockInput.checked);
             }
 
-            function syncSuggestedPrices() {
-                if (!variantList) {
+            function syncVariantPricing(card) {
+                if (!card) {
                     return;
                 }
 
                 const locked = isPriceLocked();
+                const sellingGroup = card.querySelector('.variant-selling-price-group');
+                const suggestedSingleGroup = card.querySelector('.variant-suggested-single-group');
+                const suggestedRangeGroup = card.querySelector('.variant-suggested-range-group');
+                const sellingInput = card.querySelector('.variant-selling-price');
+                const suggestedInput = card.querySelector('.variant-suggested-price');
+                const suggestedMinInput = card.querySelector('.variant-suggested-price-min');
+                const suggestedMaxInput = card.querySelector('.variant-suggested-price-max');
+                const sellingLockedHint = card.querySelector('.variant-selling-locked-hint');
 
-                variantList.querySelectorAll('.variant-card').forEach(function(card) {
-                    const sellingInput = card.querySelector('.variant-selling-price');
-                    const suggestedInput = card.querySelector('.variant-suggested-price');
+                if (locked) {
+                    suggestedSingleGroup?.classList.remove('d-none');
+                    suggestedRangeGroup?.classList.add('d-none');
+                    sellingLockedHint?.classList.add('d-none');
 
-                    if (!sellingInput || !suggestedInput) {
-                        return;
+                    if (sellingInput) {
+                        sellingInput.readOnly = false;
+                        sellingInput.classList.remove('bg-light');
+                        sellingInput.removeAttribute('tabindex');
+                        sellingInput.required = true;
                     }
 
-                    if (locked) {
-                        suggestedInput.value = sellingInput.value;
+                    if (suggestedInput) {
                         suggestedInput.readOnly = true;
                         suggestedInput.classList.add('bg-light');
-                        suggestedInput.title = 'Suggested price is locked to selling price';
-                    } else {
-                        suggestedInput.readOnly = false;
-                        suggestedInput.classList.remove('bg-light');
-                        suggestedInput.title = '';
+                        suggestedInput.required = false;
+                        suggestedInput.title = 'Suggested price is locked and cannot be edited';
                     }
-                });
+
+                    if (suggestedMinInput) {
+                        suggestedMinInput.required = false;
+                        suggestedMinInput.disabled = true;
+                    }
+
+                    if (suggestedMaxInput) {
+                        suggestedMaxInput.required = false;
+                        suggestedMaxInput.disabled = true;
+                    }
+                } else {
+                    suggestedSingleGroup?.classList.add('d-none');
+                    suggestedRangeGroup?.classList.remove('d-none');
+                    sellingLockedHint?.classList.remove('d-none');
+
+                    if (sellingInput) {
+                        sellingInput.readOnly = true;
+                        sellingInput.classList.add('bg-light');
+                        sellingInput.required = false;
+                        sellingInput.title = 'Selling price is locked and cannot be edited';
+                    }
+
+                    if (suggestedInput) {
+                        suggestedInput.readOnly = true;
+                        suggestedInput.required = false;
+                    }
+
+                    if (suggestedMinInput) {
+                        suggestedMinInput.disabled = false;
+                        suggestedMinInput.required = true;
+                    }
+
+                    if (suggestedMaxInput) {
+                        suggestedMaxInput.disabled = false;
+                        suggestedMaxInput.required = true;
+                    }
+                }
+            }
+
+            function syncAllVariantPricing() {
+                if (!variantList) {
+                    return;
+                }
+
+                variantList.querySelectorAll('.variant-card').forEach(syncVariantPricing);
+            }
+
+            function resolveSuggestedRangeValues(variant) {
+                const min = variant?.suggested_price_min ?? variant?.suggested_price ?? '';
+                const max = variant?.suggested_price_max ?? variant?.suggested_price ?? '';
+
+                return {
+                    min: min,
+                    max: max,
+                };
+            }
+
+            function collectUsedBarcodes() {
+                if (!variantList) {
+                    return [];
+                }
+
+                return [...variantList.querySelectorAll('input[name*="[barcode]"]')]
+                    .map((input) => input.value.trim())
+                    .filter(Boolean);
+            }
+
+            function generateUniqueBarcode() {
+                const used = new Set(collectUsedBarcodes());
+                const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+                let barcode;
+
+                do {
+                    let random = '';
+                    for (let i = 0; i < 12; i++) {
+                        random += chars.charAt(Math.floor(Math.random() * chars.length));
+                    }
+                    barcode = 'AUTO-' + random;
+                } while (used.has(barcode));
+
+                return barcode;
             }
 
             function createVariant(variant = null) {
                 variantCount += 1;
                 const variantIndex = variantCount - 1;
                 const variantId = 'variant-' + variantCount;
+                const locked = isPriceLocked();
 
                 const row = document.createElement('div');
                 row.className = 'variant-card';
                 row.id = variantId;
                 const variantName = variant?.name ?? '';
-                const variantBarcode = variant?.barcode ?? '';
+                const variantBarcode = (variant?.barcode ?? '').trim() || generateUniqueBarcode();
                 const variantCost = variant?.cost ?? '';
-                const variantSelling = variant?.selling_price ?? '';
+                const variantSelling = variant?.selling_price ?? '0.00';
                 const variantWeight = variant?.weight ?? '';
-                const variantSuggested = isPriceLocked()
-                    ? (variantSelling || variant?.suggested_price || '')
-                    : (variant?.suggested_price ?? '');
+                const variantSuggested = variant?.suggested_price ?? '';
+                const suggestedRange = resolveSuggestedRangeValues(variant);
+                const variantSuggestedMin = suggestedRange.min;
+                const variantSuggestedMax = suggestedRange.max;
                 const variantCommission = variant?.company_commission ?? defaultCompanyCommission;
                 row.innerHTML = `
                     <div class="variant-header d-flex justify-content-between align-items-center">
@@ -719,7 +809,7 @@
                             </div>
                             <div class="col-lg-4">
                                 <label class="label fs-14 mb-2">Barcode</label>
-                                <input type="text" class="form-control" name="variants[${variantIndex}][barcode]" value="${variantBarcode}" placeholder="Barcode">
+                                <input type="text" class="form-control" name="variants[${variantIndex}][barcode]" value="${variantBarcode}" placeholder="Auto-generated" readonly>
                             </div>
                             <div class="col-lg-6">
                                 <label class="label fs-14 mb-2">Cost</label>
@@ -728,22 +818,47 @@
                                     <input type="number" min="0" step="0.01" class="form-control" name="variants[${variantIndex}][cost]" value="${variantCost}" placeholder="0.00" required>
                                 </div>
                             </div>
-                            <div class="col-lg-6">
-                                <label class="label fs-14 mb-2">Selling Price</label>
+                            <div class="col-lg-6 variant-selling-price-group">
+                                <label class="label fs-14 mb-2">
+                                    Selling Price
+                                    <small class="text-muted variant-selling-locked-hint d-none">(Locked)</small>
+                                </label>
                                 <div class="input-group">
                                     <span class="input-group-text">${currencyIsoCode}</span>
-                                    <input type="number" min="0" step="0.01" class="form-control variant-selling-price" name="variants[${variantIndex}][selling_price]" value="${variantSelling}" placeholder="0.00" required>
+                                    <input type="number" min="0" step="0.01" class="form-control variant-selling-price" name="variants[${variantIndex}][selling_price]" value="${variantSelling}" placeholder="0.00" ${locked ? 'required' : 'readonly'}>
                                 </div>
                             </div>
                             <div class="col-lg-6">
                                 <label class="label fs-14 mb-2">Weight (kg)</label>
                                 <input type="number" min="0.001" step="0.001" class="form-control" name="variants[${variantIndex}][weight]" value="${variantWeight}" placeholder="0.100" required>
                             </div>
-                            <div class="col-lg-6">
-                                <label class="label fs-14 mb-2">Suggested Price</label>
+                            <div class="col-lg-6 variant-suggested-single-group">
+                                <label class="label fs-14 mb-2">
+                                    Suggested Price
+                                    <small class="text-muted">(Locked)</small>
+                                </label>
                                 <div class="input-group">
                                     <span class="input-group-text">${currencyIsoCode}</span>
-                                    <input type="number" min="0" step="0.01" class="form-control variant-suggested-price" name="variants[${variantIndex}][suggested_price]" value="${variantSuggested}" placeholder="0.00">
+                                    <input type="number" min="0" step="0.01" class="form-control variant-suggested-price" name="variants[${variantIndex}][suggested_price]" value="${variantSuggested}" placeholder="Locked" readonly>
+                                </div>
+                            </div>
+                            <div class="col-lg-6 variant-suggested-range-group d-none">
+                                <label class="label fs-14 mb-2">Suggested Price Range</label>
+                                <div class="row g-2">
+                                    <div class="col-6">
+                                        <div class="input-group">
+                                            <span class="input-group-text">${currencyIsoCode}</span>
+                                            <input type="number" min="0" step="0.01" class="form-control variant-suggested-price-min" name="variants[${variantIndex}][suggested_price_min]" value="${variantSuggestedMin}" placeholder="Min" ${locked ? 'disabled' : 'required'}>
+                                        </div>
+                                        <small class="text-muted">Minimum</small>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="input-group">
+                                            <span class="input-group-text">${currencyIsoCode}</span>
+                                            <input type="number" min="0" step="0.01" class="form-control variant-suggested-price-max" name="variants[${variantIndex}][suggested_price_max]" value="${variantSuggestedMax}" placeholder="Max" ${locked ? 'disabled' : 'required'}>
+                                        </div>
+                                        <small class="text-muted">Maximum</small>
+                                    </div>
                                 </div>
                             </div>
                             <input type="hidden" name="variants[${variantIndex}][company_commission]" value="${variantCommission}">
@@ -757,30 +872,11 @@
                 }
 
                 variantList.appendChild(row);
-                syncSuggestedPrices();
+                syncVariantPricing(row);
             }
 
             if (priceLockInput) {
-                priceLockInput.addEventListener('change', syncSuggestedPrices);
-            }
-
-            if (variantList) {
-                variantList.addEventListener('input', function(event) {
-                    if (!isPriceLocked()) {
-                        return;
-                    }
-
-                    const sellingInput = event.target.closest('.variant-selling-price');
-                    if (!sellingInput) {
-                        return;
-                    }
-
-                    const card = sellingInput.closest('.variant-card');
-                    const suggestedInput = card?.querySelector('.variant-suggested-price');
-                    if (suggestedInput) {
-                        suggestedInput.value = sellingInput.value;
-                    }
-                });
+                priceLockInput.addEventListener('change', syncAllVariantPricing);
             }
 
             addVariantBtn.addEventListener('click', createVariant);
@@ -811,7 +907,7 @@
                 createVariant();
             }
 
-            syncSuggestedPrices();
+            syncAllVariantPricing();
         })();
     </script>
 @endsection

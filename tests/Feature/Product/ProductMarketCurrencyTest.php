@@ -61,7 +61,10 @@ class ProductMarketCurrencyTest extends TestCase
             ->assertSee('Product Market')
             ->assertSee('Sri Lanka')
             ->assertSee('Currency: LKR (Rs)')
-            ->assertSee('LKR');
+            ->assertSee('LKR')
+            ->assertSee('generateUniqueBarcode', false)
+            ->assertSee('Auto-generated', false)
+            ->assertSee('readonly', false);
     }
 
     public function test_malaysian_supplier_create_page_displays_myr_market_context(): void

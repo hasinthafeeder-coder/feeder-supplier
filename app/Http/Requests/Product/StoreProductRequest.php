@@ -28,6 +28,11 @@ class StoreProductRequest extends FormRequest
 
     use ValidatesProductDescriptions;
 
+    /**
+     * @var array<int, array<string, mixed>>
+     */
+    private array $originalVariants = [];
+
 
 
     public function authorize(): bool
@@ -48,13 +53,15 @@ class StoreProductRequest extends FormRequest
 
         $variants = $this->input('variants', []);
 
+        $this->originalVariants = is_array($variants) ? $variants : [];
+
 
 
         $this->prepareProductDescriptionsForValidation($this->resolvedProductMarket());
 
 
 
-        if ($priceLocked && is_array($variants)) {
+        if (is_array($variants)) {
 
             foreach ($variants as $index => $variant) {
 
@@ -66,7 +73,39 @@ class StoreProductRequest extends FormRequest
 
 
 
-                $variants[$index]['suggested_price'] = $variant['selling_price'] ?? null;
+                $existing = ! empty($variant['id'])
+
+                    ? ProductVariant::query()->find($variant['id'])
+
+                    : null;
+
+
+
+                if ($priceLocked) {
+
+                    if ($existing) {
+
+                        $variants[$index]['suggested_price'] = $existing->suggested_price;
+
+                    }
+
+                } else {
+
+                    if ($existing) {
+
+                        $variants[$index]['selling_price'] = $existing->selling_price;
+
+                    } else {
+
+                        $variants[$index]['selling_price'] = 0;
+
+                    }
+
+
+
+                    unset($variants[$index]['suggested_price']);
+
+                }
 
             }
 
@@ -93,6 +132,10 @@ class StoreProductRequest extends FormRequest
     public function rules(): array
 
     {
+
+        $priceLocked = $this->boolean('price_locked');
+
+
 
         return array_merge([
 
@@ -126,11 +169,47 @@ class StoreProductRequest extends FormRequest
 
             'variants.*.cost' => ['required', 'numeric', 'min:0'],
 
-            'variants.*.selling_price' => ['required', 'numeric', 'min:0'],
+            'variants.*.selling_price' => [
+
+                $priceLocked ? 'required' : 'nullable',
+
+                'numeric',
+
+                'min:0',
+
+            ],
 
             'variants.*.weight' => ['required', 'numeric', 'gt:0'],
 
-            'variants.*.suggested_price' => ['nullable', 'numeric', 'min:0'],
+            'variants.*.suggested_price' => [
+
+                $priceLocked ? 'nullable' : 'prohibited',
+
+                'numeric',
+
+                'min:0',
+
+            ],
+
+            'variants.*.suggested_price_min' => [
+
+                $priceLocked ? 'prohibited' : 'required',
+
+                'numeric',
+
+                'min:0',
+
+            ],
+
+            'variants.*.suggested_price_max' => [
+
+                $priceLocked ? 'prohibited' : 'required',
+
+                'numeric',
+
+                'min:0',
+
+            ],
 
             'variants.*.company_commission' => ['nullable', 'numeric', 'min:0'],
 
@@ -160,7 +239,15 @@ class StoreProductRequest extends FormRequest
 
 
 
-            foreach ((array) $this->input('variants', []) as $index => $variant) {
+            foreach ($this->originalVariants as $index => $variant) {
+
+                if (! is_array($variant)) {
+
+                    continue;
+
+                }
+
+
 
                 $barcode = trim((string) ($variant['barcode'] ?? ''));
 
@@ -198,29 +285,85 @@ class StoreProductRequest extends FormRequest
 
                 if ($priceLocked) {
 
-                    $sellingPrice = $variant['selling_price'] ?? null;
+                    if (! empty($variant['id'])) {
 
-                    $suggestedPrice = $variant['suggested_price'] ?? null;
+                        $existing = ProductVariant::query()->find($variant['id']);
+
+
+
+                        if ($existing && $this->submittedPriceWasTampered(
+
+                            $variant['suggested_price'] ?? null,
+
+                            $existing->suggested_price
+
+                        )) {
+
+                            $validator->errors()->add(
+
+                                "variants.{$index}.suggested_price",
+
+                                'Suggested price cannot be modified when Price Lock is enabled.'
+
+                            );
+
+                        }
+
+                    }
+
+                } else {
+
+                    $minPrice = $variant['suggested_price_min'] ?? null;
+
+                    $maxPrice = $variant['suggested_price_max'] ?? null;
 
 
 
                     if (
 
-                        $sellingPrice !== null
+                        $minPrice !== null
 
-                        && $suggestedPrice !== null
+                        && $maxPrice !== null
 
-                        && (float) $sellingPrice !== (float) $suggestedPrice
+                        && (float) $minPrice > (float) $maxPrice
 
                     ) {
 
                         $validator->errors()->add(
 
-                            "variants.{$index}.suggested_price",
+                            "variants.{$index}.suggested_price_max",
 
-                            'Suggested price must match selling price when Price Lock is enabled.'
+                            'Suggested maximum price must be greater than or equal to the minimum price.'
 
                         );
+
+                    }
+
+
+
+                    if (! empty($variant['id'])) {
+
+                        $existing = ProductVariant::query()->find($variant['id']);
+
+
+
+                        if ($existing && $this->submittedPriceWasTampered(
+
+                            $variant['selling_price'] ?? null,
+
+                            $existing->selling_price
+
+                        )) {
+
+                            $validator->errors()->add(
+
+                                "variants.{$index}.selling_price",
+
+                                'Selling price cannot be modified when Price Lock is disabled.'
+
+                            );
+
+                        }
 
                     }
 
@@ -229,6 +372,32 @@ class StoreProductRequest extends FormRequest
             }
 
         });
+
+    }
+
+
+
+    private function submittedPriceWasTampered(mixed $submitted, mixed $stored): bool
+
+    {
+
+        if ($submitted === null && $stored === null) {
+
+            return false;
+
+        }
+
+
+
+        if ($submitted === null || $stored === null) {
+
+            return true;
+
+        }
+
+
+
+        return (float) $submitted !== (float) $stored;
 
     }
 
@@ -267,5 +436,4 @@ class StoreProductRequest extends FormRequest
     }
 
 }
-
 

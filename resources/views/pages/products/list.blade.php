@@ -138,7 +138,16 @@
                                     </td>
                                     <td class="text-body">{{ $product->category?->name ?? '—' }}</td>
                                     <td class="text-body">
-                                        {{ $primaryVariant ? CurrencyDisplay::formatAmount($productCurrency, $primaryVariant->selling_price) : '—' }}
+                                        {{ $primaryVariant
+                                            ? CurrencyDisplay::formatProductVariantListPrice(
+                                                $productCurrency,
+                                                (bool) $product->price_locked,
+                                                $primaryVariant->selling_price,
+                                                $primaryVariant->suggested_price,
+                                                $primaryVariant->suggested_price_min,
+                                                $primaryVariant->suggested_price_max,
+                                            )
+                                            : '—' }}
                                     </td>
                                     <td class="text-body">—</td>
                                     <td class="text-body">—</td>

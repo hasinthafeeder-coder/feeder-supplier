@@ -1,5 +1,9 @@
 @extends('layout_main.app')
 
+@php
+    $filters = $filters ?? ['search' => ''];
+@endphp
+
 @section('content')
     <div class="main-content-container overflow-hidden">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4 mt-1">
@@ -30,14 +34,16 @@
         <div class="card bg-white rounded-10 border border-white mb-4">
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 p-20">
                 <div class="d-flex flex-wrap gap-2 gap-xxl-5 align-items-center">
-                    <form class="table-src-form position-relative m-0">
-                        <input type="text" class="form-control w-340" placeholder="Search here...">
-                        <div class="src-btn position-absolute top-50 start-0 translate-middle-y bg-transparent p-0 border-0">
+                    <form method="GET" action="{{ route('grns.index') }}" class="table-src-form position-relative m-0">
+                        <input type="text" class="form-control w-340" name="search"
+                            value="{{ $filters['search'] ?? '' }}" placeholder="Search GRN or invoice number...">
+                        <button type="submit"
+                            class="src-btn position-absolute top-50 start-0 translate-middle-y bg-transparent p-0 border-0">
                             <span class="material-symbols-outlined">search</span>
-                        </div>
+                        </button>
                     </form>
                     <span class="fs-16">
-                        Total GRNs <span class="text-primary">({{ number_format($grns->count()) }})</span>
+                        Total GRNs <span class="text-primary">({{ number_format($grns->total()) }})</span>
                     </span>
                 </div>
 
@@ -102,6 +108,11 @@
                         </tbody>
                     </table>
                 </div>
+
+                @include('partials.pagination', [
+                    'paginator' => $grns,
+                    'ariaLabel' => 'GRN list pagination',
+                ])
             </div>
         </div>
     </div>

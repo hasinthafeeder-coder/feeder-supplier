@@ -102,6 +102,10 @@ Route::middleware('auth')->group(function () {
         ->middleware('permission:grns.delete')
         ->name('grns.destroy');
 
+    Route::get('/stock', [\App\Http\Controllers\Stock\StockController::class, 'index'])
+        ->middleware('permission:stock.view')
+        ->name('stock.index');
+
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');

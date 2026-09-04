@@ -6,10 +6,11 @@
     $product = $product ?? null;
     $images = $product?->images ?? collect();
     $variants = $product?->variants ?? collect();
-    $primaryVariant = $variants->first();
-    $statusValue = $product?->status instanceof \Feeder\Core\Enums\ProductStatus
-        ? $product->status->value
-        : (string) ($product?->status ?? 'DRAFT');
+    $priceLocked = (bool) ($product?->price_locked ?? false);
+    $statusValue =
+        $product?->status instanceof \Feeder\Core\Enums\ProductStatus
+            ? $product->status->value
+            : (string) ($product?->status ?? 'DRAFT');
     $statusBadgeClass = match ($statusValue) {
         'ACTIVE' => 'bg-success-subtle text-success border border-success border-opacity-10',
         'INACTIVE' => 'bg-danger-subtle text-danger border border-danger border-opacity-10',
@@ -117,8 +118,8 @@
                         </div>
                         <div class="d-flex flex-wrap gap-2">
                             <a href="{{ route('products.index') }}" class="btn btn-outline-secondary btn-sm">Back</a>
-                            <a href="{{ route('products.edit', $product) }}"
-                                class="btn btn-outline-primary btn-sm">Edit Product</a>
+                            <a href="{{ route('products.edit', $product) }}" class="btn btn-outline-primary btn-sm">Edit
+                                Product</a>
                             @if ($statusValue === 'ACTIVE')
                                 <form action="{{ route('products.deactivate', $product) }}" method="POST">
                                     @csrf
@@ -135,19 +136,20 @@
 
                     <div class="d-flex flex-wrap gap-2 mb-4">
                         <span class="badge bg-light text-body border">Product ID: #{{ $product->id }}</span>
-                        <span class="badge bg-light text-body border">Category: {{ $product->category?->name ?? '—' }}</span>
+                        <span class="badge bg-light text-body border">Category:
+                            {{ $product->category?->name ?? '—' }}</span>
                         @if ($productMarketCountry)
                             <span class="badge bg-light text-body border">Market: {{ $productMarketCountry }}</span>
                         @else
-                            <span class="badge bg-warning-subtle text-warning border border-warning border-opacity-10">Market unavailable</span>
+                            <span
+                                class="badge bg-warning-subtle text-warning border border-warning border-opacity-10">Market
+                                unavailable</span>
                         @endif
                         @if ($product->system_visible)
                             <span class="badge bg-light text-body border">System Visible</span>
                         @endif
-                        @if ($primaryVariant?->barcode)
-                            <span class="badge bg-light text-body border">Barcode: {{ $primaryVariant->barcode }}</span>
-                        @endif
-                        <span class="badge bg-light text-body border">Created: {{ optional($product->created_at)->format('M d, Y') }}</span>
+                        <span class="badge bg-light text-body border">Created:
+                            {{ optional($product->created_at)->format('M d, Y') }}</span>
                         @if ($product->supplier)
                             <span class="badge bg-light text-body border">Supplier: {{ $product->supplier->email }}</span>
                         @endif
@@ -159,31 +161,52 @@
                         </p>
                     </div>
 
+                    @if ($variants->isNotEmpty())
+                        <div class="d-flex flex-column gap-3 mb-4">
+                            @foreach ($variants as $variant)
+                                <div class="border rounded-10 p-3 bg-light-subtle mb-">
+                                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                                        <span class="fw-medium fs-16">{{ $variant->name }}</span>
+                                        @if ($variant->barcode)
+                                            <span class="badge bg-light text-body border">Barcode:
+                                                {{ $variant->barcode }}</span>
+                                        @endif
+                                    </div>
+                                    <div class="row g-3">
+                                        <div class="col-md-4">
+                                            <div class="text-muted fs-13 mb-1">Cost</div>
+                                            <div class="fs-16 fw-medium">
+                                                {{ CurrencyDisplay::formatAmount($productCurrency, $variant->cost) }}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="text-muted fs-13 mb-1">
+                                                {{ $priceLocked ? 'Selling Price' : 'Suggested Price Range' }}
+                                            </div>
+                                            <div class="fs-16 fw-medium">
+                                                {{ CurrencyDisplay::formatProductVariantListPrice(
+                                                    $productCurrency,
+                                                    $priceLocked,
+                                                    $variant->selling_price,
+                                                    $variant->suggested_price,
+                                                    $variant->suggested_price_min,
+                                                    $variant->suggested_price_max,
+                                                ) }}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="text-muted fs-13 mb-1">Weight</div>
+                                            <div class="fs-16 fw-medium">
+                                                {{ $variant->weight !== null ? number_format((float) $variant->weight, 3) . ' kg' : '—' }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+
                     <div class="row g-3 mb-4">
-                        <div class="col-md-6">
-                            <div class="border rounded-10 p-3 h-100 bg-light-subtle">
-                                <div class="text-muted fs-13 mb-1">Cost</div>
-                                <div class="fs-16 fw-medium">
-                                    {{ $primaryVariant ? CurrencyDisplay::formatAmount($productCurrency, $primaryVariant->cost) : '—' }}
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="border rounded-10 p-3 h-100 bg-light-subtle">
-                                <div class="text-muted fs-13 mb-1">Selling Price</div>
-                                <div class="fs-16 fw-medium">
-                                    {{ $primaryVariant ? CurrencyDisplay::formatAmount($productCurrency, $primaryVariant->selling_price) : '—' }}
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="border rounded-10 p-3 h-100 bg-light-subtle">
-                                <div class="text-muted fs-13 mb-1">Suggested Price</div>
-                                <div class="fs-16 fw-medium">
-                                    {{ $primaryVariant && $primaryVariant->suggested_price !== null ? CurrencyDisplay::formatAmount($productCurrency, $primaryVariant->suggested_price) : '—' }}
-                                </div>
-                            </div>
-                        </div>
                         <div class="col-md-6">
                             <div class="border rounded-10 p-3 h-100 bg-light-subtle">
                                 <div class="text-muted fs-13 mb-1">Approximate Delivery Charge</div>
@@ -194,14 +217,6 @@
                             <div class="border rounded-10 p-3 h-100 bg-light-subtle">
                                 <div class="text-muted fs-13 mb-1">Items Sold</div>
                                 <div class="fs-16 fw-medium">—</div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="border rounded-10 p-3 h-100 bg-light-subtle">
-                                <div class="text-muted fs-13 mb-1">Weight</div>
-                                <div class="fs-16 fw-medium">
-                                    {{ $primaryVariant && $primaryVariant->weight !== null ? number_format((float) $primaryVariant->weight, 3) . ' kg' : '—' }}
-                                </div>
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -218,31 +233,12 @@
                         </div>
                     </div>
 
-                    @if ($variants->count() > 1)
-                        <div class="border rounded-10 p-3 bg-light-subtle mb-4">
-                            <div class="text-muted fs-13 mb-2">Variants</div>
-                            <div class="d-flex flex-column gap-2">
-                                @foreach ($variants as $variant)
-                                    <div class="d-flex flex-wrap justify-content-between gap-2">
-                                        <span class="fw-medium">{{ $variant->name }}</span>
-                                        <span class="text-body">
-                                            {{ CurrencyDisplay::formatAmount($productCurrency, $variant->selling_price) }}
-                                            · Cost {{ CurrencyDisplay::formatAmount($productCurrency, $variant->cost) }}
-                                            @if ($variant->barcode)
-                                                · {{ $variant->barcode }}
-                                            @endif
-                                        </span>
-                                    </div>
-                                @endforeach
-                            </div>
-                        </div>
-                    @endif
-
                     <div class="border rounded-10 p-3 bg-light-subtle mb-4">
                         <div class="d-flex align-items-center justify-content-between gap-3 flex-wrap">
                             <div>
                                 <div class="text-muted fs-13">Product Guideline (PDF)</div>
-                                <div class="fw-medium">{{ $guidelineUuid ? $guidelineName : 'No guideline uploaded' }}</div>
+                                <div class="fw-medium">{{ $guidelineUuid ? $guidelineName : 'No guideline uploaded' }}
+                                </div>
                             </div>
                             @if ($guidelineUuid)
                                 <a href="{{ route('files.view', ['uuid' => $guidelineUuid]) }}" target="_blank"
@@ -261,17 +257,19 @@
                         <div class="d-flex flex-wrap gap-2">
                             @if ($product->system_visible)
                                 <span
-                                    class="badge bg-success-subtle text-success border border-success border-opacity-10">System Visible</span>
+                                    class="badge bg-success-subtle text-success border border-success border-opacity-10">System
+                                    Visible</span>
                             @endif
                             @if ($product->web_visible)
-                                <span
-                                    class="badge bg-info-subtle text-info border border-info border-opacity-10">Web Visible</span>
+                                <span class="badge bg-info-subtle text-info border border-info border-opacity-10">Web
+                                    Visible</span>
                             @endif
                             @if ($product->price_locked)
                                 <span
-                                    class="badge bg-warning-subtle text-warning border border-warning border-opacity-10">Price Lock</span>
+                                    class="badge bg-warning-subtle text-warning border border-warning border-opacity-10">Price
+                                    Lock</span>
                             @endif
-                            @if (! $product->system_visible && ! $product->web_visible && ! $product->price_locked)
+                            @if (!$product->system_visible && !$product->web_visible && !$product->price_locked)
                                 <span class="badge bg-light text-body border">No visibility flags set</span>
                             @endif
                         </div>
@@ -286,21 +284,17 @@
         <div class="card bg-white p-20 rounded-10 border border-white">
             <div class="d-flex justify-content-between align-items-center mb-20 flex-wrap gap-2">
                 <h4 class="mb-0">Product Information</h4>
-                <span class="badge bg-light text-body border">Updated {{ optional($product->updated_at)->diffForHumans() }}</span>
+                <span class="badge bg-light text-body border">Updated
+                    {{ optional($product->updated_at)->diffForHumans() }}</span>
             </div>
 
             <ul class="nav nav-tabs nav-tabs-separator" id="productInfoTabs" role="tablist">
                 @foreach ($productLanguages as $index => $language)
                     <li class="nav-item" role="presentation">
-                        <button
-                            class="nav-link {{ $index === 0 ? 'active' : '' }}"
-                            id="info-{{ $language['code'] }}-tab"
-                            data-bs-toggle="tab"
-                            data-bs-target="#info-{{ $language['code'] }}"
-                            type="button"
-                            role="tab"
-                            aria-selected="{{ $index === 0 ? 'true' : 'false' }}"
-                        >
+                        <button class="nav-link {{ $index === 0 ? 'active' : '' }}"
+                            id="info-{{ $language['code'] }}-tab" data-bs-toggle="tab"
+                            data-bs-target="#info-{{ $language['code'] }}" type="button" role="tab"
+                            aria-selected="{{ $index === 0 ? 'true' : 'false' }}">
                             {{ $language['label'] }}
                         </button>
                     </li>
@@ -312,7 +306,8 @@
                     @php
                         $description = $product?->descriptionFor($language['code']) ?? '';
                     @endphp
-                    <div class="tab-pane fade {{ $index === 0 ? 'show active' : '' }}" id="info-{{ $language['code'] }}" role="tabpanel">
+                    <div class="tab-pane fade {{ $index === 0 ? 'show active' : '' }}" id="info-{{ $language['code'] }}"
+                        role="tabpanel">
                         <p class="mb-0 fs-16 lh-1-8 text-body">
                             {{ $description !== '' ? $description : 'No ' . $language['label'] . ' description provided.' }}
                         </p>
@@ -324,7 +319,8 @@
         <div class="card bg-white p-20 rounded-10 border border-white mt-4">
             <div class="d-flex justify-content-between align-items-center mb-20 flex-wrap gap-2">
                 <h4 class="mb-0">Reviews & Ratings</h4>
-                <span class="badge bg-warning-subtle text-warning border border-warning border-opacity-10">No reviews yet</span>
+                <span class="badge bg-warning-subtle text-warning border border-warning border-opacity-10">No reviews
+                    yet</span>
             </div>
 
             <div class="row g-4 align-items-start">
