@@ -314,6 +314,7 @@ class ProductController extends Controller
                 'suggested_price_min' => $priceLocked ? null : ($variant['suggested_price_min'] ?? null),
                 'suggested_price_max' => $priceLocked ? null : ($variant['suggested_price_max'] ?? null),
                 'company_commission' => $variant['company_commission'] ?? null,
+                'reorder_level' => (int) ($variant['reorder_level'] ?? 0),
                 'sort_order' => $index,
                 'is_active' => true,
             ];

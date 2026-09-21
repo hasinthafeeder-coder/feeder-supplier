@@ -665,31 +665,22 @@
 
                 const locked = isPriceLocked();
                 const sellingGroup = card.querySelector('.variant-selling-price-group');
-                const suggestedSingleGroup = card.querySelector('.variant-suggested-single-group');
                 const suggestedRangeGroup = card.querySelector('.variant-suggested-range-group');
                 const sellingInput = card.querySelector('.variant-selling-price');
-                const suggestedInput = card.querySelector('.variant-suggested-price');
                 const suggestedMinInput = card.querySelector('.variant-suggested-price-min');
                 const suggestedMaxInput = card.querySelector('.variant-suggested-price-max');
-                const sellingLockedHint = card.querySelector('.variant-selling-locked-hint');
 
                 if (locked) {
-                    suggestedSingleGroup?.classList.remove('d-none');
+                    sellingGroup?.classList.remove('d-none');
                     suggestedRangeGroup?.classList.add('d-none');
-                    sellingLockedHint?.classList.add('d-none');
 
                     if (sellingInput) {
                         sellingInput.readOnly = false;
                         sellingInput.classList.remove('bg-light');
                         sellingInput.removeAttribute('tabindex');
                         sellingInput.required = true;
-                    }
-
-                    if (suggestedInput) {
-                        suggestedInput.readOnly = true;
-                        suggestedInput.classList.add('bg-light');
-                        suggestedInput.required = false;
-                        suggestedInput.title = 'Suggested price is locked and cannot be edited';
+                        sellingInput.disabled = false;
+                        sellingInput.removeAttribute('title');
                     }
 
                     if (suggestedMinInput) {
@@ -702,20 +693,13 @@
                         suggestedMaxInput.disabled = true;
                     }
                 } else {
-                    suggestedSingleGroup?.classList.add('d-none');
+                    sellingGroup?.classList.add('d-none');
                     suggestedRangeGroup?.classList.remove('d-none');
-                    sellingLockedHint?.classList.remove('d-none');
 
                     if (sellingInput) {
                         sellingInput.readOnly = true;
-                        sellingInput.classList.add('bg-light');
                         sellingInput.required = false;
-                        sellingInput.title = 'Selling price is locked and cannot be edited';
-                    }
-
-                    if (suggestedInput) {
-                        suggestedInput.readOnly = true;
-                        suggestedInput.required = false;
+                        sellingInput.disabled = true;
                     }
 
                     if (suggestedMinInput) {
@@ -788,11 +772,11 @@
                 const variantCost = variant?.cost ?? '';
                 const variantSelling = variant?.selling_price ?? '0.00';
                 const variantWeight = variant?.weight ?? '';
-                const variantSuggested = variant?.suggested_price ?? '';
                 const suggestedRange = resolveSuggestedRangeValues(variant);
                 const variantSuggestedMin = suggestedRange.min;
                 const variantSuggestedMax = suggestedRange.max;
                 const variantCommission = variant?.company_commission ?? defaultCompanyCommission;
+                const variantReorderLevel = variant?.reorder_level ?? 0;
                 row.innerHTML = `
                     <div class="variant-header d-flex justify-content-between align-items-center">
                         <div><h5 class="mb-0">Variant ${variantCount}</h5></div>
@@ -818,31 +802,14 @@
                                     <input type="number" min="0" step="0.01" class="form-control" name="variants[${variantIndex}][cost]" value="${variantCost}" placeholder="0.00" required>
                                 </div>
                             </div>
-                            <div class="col-lg-6 variant-selling-price-group">
-                                <label class="label fs-14 mb-2">
-                                    Selling Price
-                                    <small class="text-muted variant-selling-locked-hint d-none">(Locked)</small>
-                                </label>
+                            <div class="col-lg-6 variant-selling-price-group${locked ? '' : ' d-none'}">
+                                <label class="label fs-14 mb-2">Selling Price</label>
                                 <div class="input-group">
                                     <span class="input-group-text">${currencyIsoCode}</span>
-                                    <input type="number" min="0" step="0.01" class="form-control variant-selling-price" name="variants[${variantIndex}][selling_price]" value="${variantSelling}" placeholder="0.00" ${locked ? 'required' : 'readonly'}>
+                                    <input type="number" min="0" step="0.01" class="form-control variant-selling-price" name="variants[${variantIndex}][selling_price]" value="${variantSelling}" placeholder="0.00" ${locked ? 'required' : 'disabled'}>
                                 </div>
                             </div>
-                            <div class="col-lg-6">
-                                <label class="label fs-14 mb-2">Weight (kg)</label>
-                                <input type="number" min="0.001" step="0.001" class="form-control" name="variants[${variantIndex}][weight]" value="${variantWeight}" placeholder="0.100" required>
-                            </div>
-                            <div class="col-lg-6 variant-suggested-single-group">
-                                <label class="label fs-14 mb-2">
-                                    Suggested Price
-                                    <small class="text-muted">(Locked)</small>
-                                </label>
-                                <div class="input-group">
-                                    <span class="input-group-text">${currencyIsoCode}</span>
-                                    <input type="number" min="0" step="0.01" class="form-control variant-suggested-price" name="variants[${variantIndex}][suggested_price]" value="${variantSuggested}" placeholder="Locked" readonly>
-                                </div>
-                            </div>
-                            <div class="col-lg-6 variant-suggested-range-group d-none">
+                            <div class="col-lg-6 variant-suggested-range-group${locked ? ' d-none' : ''}">
                                 <label class="label fs-14 mb-2">Suggested Price Range</label>
                                 <div class="row g-2">
                                     <div class="col-6">
@@ -860,6 +827,15 @@
                                         <small class="text-muted">Maximum</small>
                                     </div>
                                 </div>
+                            </div>
+                            <div class="col-lg-6">
+                                <label class="label fs-14 mb-2">Weight (kg)</label>
+                                <input type="number" min="0.001" step="0.001" class="form-control" name="variants[${variantIndex}][weight]" value="${variantWeight}" placeholder="0.100" required>
+                            </div>
+                            <div class="col-lg-6">
+                                <label class="label fs-14 mb-2">Reorder Level</label>
+                                <input type="number" min="0" step="1" class="form-control" name="variants[${variantIndex}][reorder_level]" value="${variantReorderLevel}" placeholder="0">
+                                <small class="text-muted">0 = no reorder level set</small>
                             </div>
                             <input type="hidden" name="variants[${variantIndex}][company_commission]" value="${variantCommission}">
                         </div>

@@ -213,6 +213,8 @@ class StoreProductRequest extends FormRequest
 
             'variants.*.company_commission' => ['nullable', 'numeric', 'min:0'],
 
+            'variants.*.reorder_level' => ['nullable', 'integer', 'min:0'],
+
             'images' => ['nullable', 'array', 'max:4'],
 
             'images.*' => ['nullable', 'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],

@@ -200,6 +200,12 @@
                                                 {{ $variant->weight !== null ? number_format((float) $variant->weight, 3) . ' kg' : '—' }}
                                             </div>
                                         </div>
+                                        <div class="col-md-4">
+                                            <div class="text-muted fs-13 mb-1">Reorder Level</div>
+                                            <div class="fs-16 fw-medium">
+                                                {{ number_format((int) ($variant->reorder_level ?? 0)) }}
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             @endforeach
