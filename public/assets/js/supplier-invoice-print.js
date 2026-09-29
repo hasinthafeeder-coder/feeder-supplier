@@ -339,26 +339,58 @@
 '        }\n' +
 '        .inv-two-col > * { flex: 1; min-width: 0; }\n' +
 '        .inv-customer-line {\n' +
-'            font-size: 17px;\n' +
-'            font-weight: 700;\n' +
-'            line-height: 1.25;\n' +
-'            margin: 0 0 1.4mm;\n' +
+'            margin: 0 0 2mm;\n' +
 '            word-break: break-word;\n' +
 '            overflow-wrap: anywhere;\n' +
+'            line-height: 1.3;\n' +
+'        }\n' +
+'        .inv-customer-label {\n' +
+'            display: inline;\n' +
+'            font-size: 11px;\n' +
+'            font-weight: 700;\n' +
+'            letter-spacing: 0.4px;\n' +
+'            text-transform: uppercase;\n' +
+'            margin-right: 1.2mm;\n' +
+'            vertical-align: baseline;\n' +
+'        }\n' +
+'        .inv-customer-name {\n' +
+'            font-size: 23px;\n' +
+'            font-weight: 700;\n' +
+'            line-height: 1.25;\n' +
+'        }\n' +
+'        .inv-customer-address {\n' +
+'            font-size: 19px;\n' +
+'            font-weight: 700;\n' +
+'            line-height: 1.3;\n' +
+'        }\n' +
+'        .inv-customer-phone {\n' +
+'            font-size: 20px;\n' +
+'            font-weight: 700;\n' +
+'            line-height: 1.3;\n' +
+'        }\n' +
+'        .inv-customer-name strong,\n' +
+'        .inv-customer-address strong,\n' +
+'        .inv-customer-phone strong {\n' +
+'            font-weight: 700;\n' +
+'        }\n' +
+'        .inv-customer-city,\n' +
+'        .inv-customer-district {\n' +
+'            font-size: 18px;\n' +
+'            font-weight: 600;\n' +
+'            line-height: 1.3;\n' +
 '        }\n' +
 '        .inv-customer-split {\n' +
 '            display: flex;\n' +
 '            gap: 4mm;\n' +
 '            align-items: flex-start;\n' +
-'            margin-top: 0.6mm;\n' +
-'            padding-top: 1.6mm;\n' +
+'            margin-top: 1mm;\n' +
+'            padding-top: 2mm;\n' +
 '            border-top: 1px solid #111;\n' +
 '        }\n' +
 '        .inv-customer-split > .inv-customer-line {\n' +
 '            flex: 1;\n' +
 '            min-width: 0;\n' +
 '            margin-bottom: 0;\n' +
-'            font-size: 16px;\n' +
 '        }\n' +
 '        .inv-waybill .inv-value-lg {\n' +
 '            font-size: 13px;\n' +
@@ -631,10 +663,6 @@ bodyHtml +
             var isPaymentCollected = payment.is_payment_collected || charges.is_payment_collected;
             var productTotal = charges.items_subtotal;
             var deliveryCharge = charges.courier_fee;
-            var payableTotal = charges.customer_payable_amount
-                || payment.cod_amount
-                || charges.cod_amount
-                || '—';
             var codAmount = payment.cod_amount || charges.cod_amount || charges.customer_payable_amount || '—';
 
             var paymentBlock = isPaymentCollected
@@ -700,12 +728,22 @@ bodyHtml +
 
                     '<section class="inv-section">' +
                         '<span class="inv-section-title">Customer</span>' +
-                        '<div class="inv-customer-line">NAME : ' + escapeHtml(customer.name || '—') + '</div>' +
-                        '<div class="inv-customer-line">ADDRESS : ' + escapeHtml(customer.address || '—') + '</div>' +
-                        '<div class="inv-customer-line">Contact : ' + contacts + '</div>' +
+                        '<div class="inv-customer-line inv-customer-name">' +
+                            '<span class="inv-customer-label">Name</span><strong>' + escapeHtml(customer.name || '—') + '</strong>' +
+                        '</div>' +
+                        '<div class="inv-customer-line inv-customer-address">' +
+                            '<span class="inv-customer-label">Address</span><strong>' + escapeHtml(customer.address || '—') + '</strong>' +
+                        '</div>' +
+                        '<div class="inv-customer-line inv-customer-phone">' +
+                            '<span class="inv-customer-label">Contact</span><strong>' + contacts + '</strong>' +
+                        '</div>' +
                         '<div class="inv-customer-split">' +
-                            '<div class="inv-customer-line">NEAREST CITY : ' + escapeHtml(courier.city || '—') + '</div>' +
-                            '<div class="inv-customer-line">DISTRICT : ' + escapeHtml(district) + '</div>' +
+                            '<div class="inv-customer-line inv-customer-city">' +
+                                '<span class="inv-customer-label">Nearest City</span>' + escapeHtml(courier.city || '—') +
+                            '</div>' +
+                            '<div class="inv-customer-line inv-customer-district">' +
+                                '<span class="inv-customer-label">District</span>' + escapeHtml(district) +
+                            '</div>' +
                         '</div>' +
                     '</section>' +
 
@@ -720,10 +758,6 @@ bodyHtml +
                             '<div class="inv-charge-row">' +
                                 '<span>Delivery Charge</span>' +
                                 '<span>' + escapeHtml(formatInvoiceMoney(deliveryCharge)) + '</span>' +
-                            '</div>' +
-                            '<div class="inv-charge-row is-total">' +
-                                '<span>Total</span>' +
-                                '<span>' + escapeHtml(formatInvoiceMoney(payableTotal)) + '</span>' +
                             '</div>' +
                         '</div>' +
                     '</section>' +

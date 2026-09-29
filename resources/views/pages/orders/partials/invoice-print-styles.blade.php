@@ -208,21 +208,82 @@
         min-width: 0;
     }
 
+    #supplierInvoicePrintSurface .inv-customer-details {
+        display: grid;
+        grid-template-columns: 18mm 1fr;
+        column-gap: 2.5mm;
+        row-gap: 2mm;
+        align-items: baseline;
+    }
+
+    #supplierInvoicePrintSurface .inv-customer-details > .inv-customer-line {
+        display: contents;
+    }
+
     #supplierInvoicePrintSurface .inv-customer-line {
-        font-size: 17px;
-        font-weight: 700;
-        line-height: 1.25;
-        margin: 0 0 1.4mm;
+        display: grid;
+        grid-template-columns: 18mm 1fr;
+        column-gap: 2.5mm;
+        align-items: baseline;
+        margin: 0 0 2mm;
         word-break: break-word;
         overflow-wrap: anywhere;
+        line-height: 1.3;
+    }
+
+    #supplierInvoicePrintSurface .inv-customer-label {
+        display: block;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.4px;
+        text-transform: uppercase;
+        line-height: 1.3;
+        white-space: nowrap;
+    }
+
+    #supplierInvoicePrintSurface .inv-customer-value {
+        display: block;
+        min-width: 0;
+        word-break: break-word;
+        overflow-wrap: anywhere;
+        font-weight: 700;
+    }
+
+    #supplierInvoicePrintSurface .inv-customer-name .inv-customer-value {
+        font-size: 23px;
+        line-height: 1.25;
+    }
+
+    #supplierInvoicePrintSurface .inv-customer-address .inv-customer-value {
+        font-size: 19px;
+        line-height: 1.3;
+    }
+
+    #supplierInvoicePrintSurface .inv-customer-phone .inv-customer-value {
+        font-size: 20px;
+        line-height: 1.3;
+    }
+
+    #supplierInvoicePrintSurface .inv-customer-city,
+    #supplierInvoicePrintSurface .inv-customer-district {
+        font-size: 18px;
+        font-weight: 600;
+        line-height: 1.3;
+    }
+
+    #supplierInvoicePrintSurface .inv-customer-city .inv-customer-value,
+    #supplierInvoicePrintSurface .inv-customer-district .inv-customer-value {
+        font-size: 18px;
+        font-weight: 600;
+        line-height: 1.3;
     }
 
     #supplierInvoicePrintSurface .inv-customer-split {
         display: flex;
         gap: 4mm;
         align-items: flex-start;
-        margin-top: 0.6mm;
-        padding-top: 1.6mm;
+        margin-top: 1mm;
+        padding-top: 2mm;
         border-top: 1px solid #111;
     }
 
@@ -230,7 +291,7 @@
         flex: 1;
         min-width: 0;
         margin-bottom: 0;
-        font-size: 16px;
+        grid-template-columns: max-content 1fr;
     }
 
     #supplierInvoicePrintSurface .inv-waybill .inv-value-lg {

@@ -121,8 +121,11 @@ class SupplierPrintOrdersUiTest extends TestCase
 
         $this->assertStringContainsString('invoiceBarcodeBlock(courier.tracking_number', $content);
         $this->assertStringContainsString('Invoice Number', $content);
-        $this->assertStringContainsString('font-size: 17px;', $content);
-        $this->assertStringContainsString('font-size: 16px;', $content);
+        $this->assertStringContainsString('inv-customer-name', $content);
+        $this->assertStringContainsString('font-size: 23px;', $content);
+        $this->assertStringContainsString('font-size: 19px;', $content);
+        $this->assertStringContainsString('font-size: 20px;', $content);
+        $this->assertStringContainsString('font-size: 18px;', $content);
         $this->assertStringNotContainsString('invoiceBarcodeBlock(invoiceNumber', $content);
         $this->assertStringNotContainsString("className: 'is-invoice'", $content);
     }

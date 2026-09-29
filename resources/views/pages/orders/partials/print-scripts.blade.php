@@ -840,27 +840,79 @@
             margin-top: 1mm;
         }
         .inv-two-col > * { flex: 1; min-width: 0; }
+        .inv-customer-details {
+            display: grid;
+            grid-template-columns: 18mm 1fr;
+            column-gap: 2.5mm;
+            row-gap: 2mm;
+            align-items: baseline;
+        }
+        .inv-customer-details > .inv-customer-line {
+            display: contents;
+        }
         .inv-customer-line {
-            font-size: 17px;
-            font-weight: 700;
-            line-height: 1.25;
-            margin: 0 0 1.4mm;
+            display: grid;
+            grid-template-columns: 18mm 1fr;
+            column-gap: 2.5mm;
+            align-items: baseline;
+            margin: 0 0 2mm;
             word-break: break-word;
             overflow-wrap: anywhere;
+            line-height: 1.3;
+        }
+        .inv-customer-label {
+            display: block;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.4px;
+            text-transform: uppercase;
+            line-height: 1.3;
+            white-space: nowrap;
+        }
+        .inv-customer-value {
+            display: block;
+            min-width: 0;
+            word-break: break-word;
+            overflow-wrap: anywhere;
+            font-weight: 700;
+        }
+        .inv-customer-name .inv-customer-value {
+            font-size: 23px;
+            line-height: 1.25;
+        }
+        .inv-customer-address .inv-customer-value {
+            font-size: 19px;
+            line-height: 1.3;
+        }
+        .inv-customer-phone .inv-customer-value {
+            font-size: 20px;
+            line-height: 1.3;
+        }
+        .inv-customer-city,
+        .inv-customer-district {
+            font-size: 18px;
+            font-weight: 600;
+            line-height: 1.3;
+        }
+        .inv-customer-city .inv-customer-value,
+        .inv-customer-district .inv-customer-value {
+            font-size: 18px;
+            font-weight: 600;
+            line-height: 1.3;
         }
         .inv-customer-split {
             display: flex;
             gap: 4mm;
             align-items: flex-start;
-            margin-top: 0.6mm;
-            padding-top: 1.6mm;
+            margin-top: 1mm;
+            padding-top: 2mm;
             border-top: 1px solid #111;
         }
         .inv-customer-split > .inv-customer-line {
             flex: 1;
             min-width: 0;
             margin-bottom: 0;
-            font-size: 16px;
+            grid-template-columns: max-content 1fr;
         }
         .inv-waybill .inv-value-lg {
             font-size: 13px;
@@ -1159,10 +1211,6 @@ ${bodyHtml}
             const isPaymentCollected = payment.is_payment_collected || charges.is_payment_collected;
             const productTotal = charges.items_subtotal;
             const deliveryCharge = charges.courier_fee;
-            const payableTotal = charges.customer_payable_amount
-                || payment.cod_amount
-                || charges.cod_amount
-                || '—';
             const codAmount = payment.cod_amount || charges.cod_amount || charges.customer_payable_amount || '—';
 
             const paymentBlock = isPaymentCollected
@@ -1226,12 +1274,29 @@ ${bodyHtml}
 
                     <section class="inv-section">
                         <span class="inv-section-title">Customer</span>
-                        <div class="inv-customer-line">NAME : ${escapeHtml(customer.name || '—')}</div>
-                        <div class="inv-customer-line">ADDRESS : ${escapeHtml(customer.address || '—')}</div>
-                        <div class="inv-customer-line">Contact : ${contacts}</div>
+                        <div class="inv-customer-details">
+                            <div class="inv-customer-line inv-customer-name">
+                                <span class="inv-customer-label">Name</span>
+                                <strong class="inv-customer-value">${escapeHtml(customer.name || '—')}</strong>
+                            </div>
+                            <div class="inv-customer-line inv-customer-address">
+                                <span class="inv-customer-label">Address</span>
+                                <strong class="inv-customer-value">${escapeHtml(customer.address || '—')}</strong>
+                            </div>
+                            <div class="inv-customer-line inv-customer-phone">
+                                <span class="inv-customer-label">Contact</span>
+                                <strong class="inv-customer-value">${contacts}</strong>
+                            </div>
+                        </div>
                         <div class="inv-customer-split">
-                            <div class="inv-customer-line">NEAREST CITY : ${escapeHtml(courier.city || '—')}</div>
-                            <div class="inv-customer-line">DISTRICT : ${escapeHtml(district)}</div>
+                            <div class="inv-customer-line inv-customer-city">
+                                <span class="inv-customer-label">Nearest City</span>
+                                <span class="inv-customer-value">${escapeHtml(courier.city || '—')}</span>
+                            </div>
+                            <div class="inv-customer-line inv-customer-district">
+                                <span class="inv-customer-label">District</span>
+                                <span class="inv-customer-value">${escapeHtml(district)}</span>
+                            </div>
                         </div>
                     </section>
 
@@ -1246,10 +1311,6 @@ ${bodyHtml}
                             <div class="inv-charge-row">
                                 <span>Delivery Charge</span>
                                 <span>${escapeHtml(formatInvoiceMoney(deliveryCharge))}</span>
-                            </div>
-                            <div class="inv-charge-row is-total">
-                                <span>Total</span>
-                                <span>${escapeHtml(formatInvoiceMoney(payableTotal))}</span>
                             </div>
                         </div>
                     </section>
