@@ -6,6 +6,8 @@ namespace App\Http\Requests\Product;
 
 
 
+use Feeder\Core\Support\CommercialIdentifier;
+
 use Feeder\Core\Http\Requests\Concerns\ValidatesProductDescriptions;
 
 use Feeder\Core\Models\Market;
@@ -165,7 +167,7 @@ class StoreProductRequest extends FormRequest
 
             'variants.*.name' => ['required', 'string', 'max:255'],
 
-            'variants.*.barcode' => ['nullable', 'string', 'max:255', 'distinct'],
+            'variants.*.barcode' => ['nullable', 'string', 'max:6', 'distinct'],
 
             'variants.*.cost' => ['required', 'numeric', 'min:0'],
 
@@ -256,6 +258,16 @@ class StoreProductRequest extends FormRequest
 
 
                 if ($barcode !== '') {
+                    $market = $this->resolvedProductMarket();
+                    if ($market instanceof Market && $market->market_number !== null
+                        && ! CommercialIdentifier::isValidProductBarcodeForMarket($barcode, (int) $market->market_number)) {
+                        $validator->errors()->add(
+                            "variants.{$index}.barcode",
+                            'Barcode must be exactly 6 digits starting with market number '.$market->market_number.'.'
+                        );
+                    }
+
+                    
 
                     $query = ProductVariant::query()->where('barcode', $barcode);
 

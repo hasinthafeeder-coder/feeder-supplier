@@ -381,7 +381,7 @@ class ProductReorderLevelTest extends TestCase
             'uuid' => (string) Str::uuid(),
             'product_id' => $product->id,
             'name' => 'Black / M',
-            'barcode' => 'BC-'.strtoupper(Str::random(8)),
+            'barcode' => '',
             'cost' => 1000,
             'selling_price' => 0,
             'suggested_price_min' => 1500,

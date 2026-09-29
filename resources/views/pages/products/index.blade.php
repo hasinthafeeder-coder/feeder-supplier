@@ -732,32 +732,6 @@
                 };
             }
 
-            function collectUsedBarcodes() {
-                if (!variantList) {
-                    return [];
-                }
-
-                return [...variantList.querySelectorAll('input[name*="[barcode]"]')]
-                    .map((input) => input.value.trim())
-                    .filter(Boolean);
-            }
-
-            function generateUniqueBarcode() {
-                const used = new Set(collectUsedBarcodes());
-                const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-                let barcode;
-
-                do {
-                    let random = '';
-                    for (let i = 0; i < 12; i++) {
-                        random += chars.charAt(Math.floor(Math.random() * chars.length));
-                    }
-                    barcode = 'AUTO-' + random;
-                } while (used.has(barcode));
-
-                return barcode;
-            }
-
             function createVariant(variant = null) {
                 variantCount += 1;
                 const variantIndex = variantCount - 1;
@@ -768,7 +742,7 @@
                 row.className = 'variant-card';
                 row.id = variantId;
                 const variantName = variant?.name ?? '';
-                const variantBarcode = (variant?.barcode ?? '').trim() || generateUniqueBarcode();
+                const variantBarcode = (variant?.barcode ?? '').trim();
                 const variantCost = variant?.cost ?? '';
                 const variantSelling = variant?.selling_price ?? '0.00';
                 const variantWeight = variant?.weight ?? '';
@@ -793,7 +767,7 @@
                             </div>
                             <div class="col-lg-4">
                                 <label class="label fs-14 mb-2">Barcode</label>
-                                <input type="text" class="form-control" name="variants[${variantIndex}][barcode]" value="${variantBarcode}" placeholder="Auto-generated" readonly>
+                                <input type="text" class="form-control" name="variants[${variantIndex}][barcode]" value="${variantBarcode}" placeholder="Assigned on save" readonly>
                             </div>
                             <div class="col-lg-6">
                                 <label class="label fs-14 mb-2">Cost</label>

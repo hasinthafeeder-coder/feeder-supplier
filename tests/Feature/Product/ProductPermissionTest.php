@@ -219,7 +219,7 @@ class ProductPermissionTest extends TestCase
             'uuid' => (string) Str::uuid(),
             'product_id' => $product->id,
             'name' => 'Default',
-            'barcode' => 'BC-'.strtoupper(Str::random(8)),
+            'barcode' => '',
             'cost' => 1000,
             'selling_price' => 1500,
             'suggested_price' => 1800,

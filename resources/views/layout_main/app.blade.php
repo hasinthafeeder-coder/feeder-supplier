@@ -5,6 +5,7 @@
     <!-- Required meta tags -->
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <meta name="csrf-token" content="{{ csrf_token() }}" />
 
     <!-- Links Of CSS File -->
     <link rel="stylesheet" href="{{ asset('assets/css/sidebar-menu.css') }}" />
@@ -21,6 +22,7 @@
 
     <!-- Title -->
     <title>Fila - Bootstrap 5 Admin Dashboard Template</title>
+    @stack('styles')
 </head>
 
 <body class="bg-body-bg">
@@ -87,36 +89,7 @@
                     </li>
 
                     @foreach ($section->getItems() as $item)
-                        <li class="menu-item">
-                            @if ($item->hasChildren())
-                                <a href="javascript:void(0);" class="menu-link menu-toggle">
-                                    @if ($item->getIcon())
-                                        <span class="material-symbols-outlined menu-icon">{{ $item->getIcon() }}</span>
-                                    @endif
-
-                                    <span class="title">{{ $item->getTitle() }}</span>
-                                </a>
-                                <ul class="menu-sub">
-                                    @foreach ($item->getChildren() as $child)
-                                        <li class="menu-item">
-                                            <a href="{{ $child->getRoute() ? route($child->getRoute()) : 'javascript:void(0);' }}"
-                                                class="menu-link">
-                                                {{ $child->getTitle() }}
-                                            </a>
-                                        </li>
-                                    @endforeach
-                                </ul>
-                            @else
-                                <a href="{{ $item->getRoute() ? route($item->getRoute()) : 'javascript:void(0);' }}"
-                                    class="menu-link">
-                                    @if ($item->getIcon())
-                                        <span class="material-symbols-outlined menu-icon">{{ $item->getIcon() }}</span>
-                                    @endif
-
-                                    <span class="title">{{ $item->getTitle() }}</span>
-                                </a>
-                            @endif
-                        </li>
+                        @include('partials.sidebar-menu-item', ['item' => $item])
                     @endforeach
                 @endforeach
 
@@ -505,6 +478,7 @@
     <script src="{{ asset('assets/js/custom/echarts.js') }}"></script>
     <script src="{{ asset('assets/js/custom/maps.js') }}"></script>
     <script src="{{ asset('assets/js/custom/custom.js') }}"></script>
+    @stack('scripts')
 </body>
 
 </html>

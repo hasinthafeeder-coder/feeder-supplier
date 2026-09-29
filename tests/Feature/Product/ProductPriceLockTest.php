@@ -386,7 +386,7 @@ class ProductPriceLockTest extends TestCase
             'uuid' => (string) Str::uuid(),
             'product_id' => $product->id,
             'name' => 'Default',
-            'barcode' => 'BC-'.strtoupper(Str::random(8)),
+            'barcode' => '',
             'cost' => 1000,
             'selling_price' => $sellingPrice,
             'suggested_price' => $suggestedPrice,

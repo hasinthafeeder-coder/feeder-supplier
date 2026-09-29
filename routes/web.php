@@ -106,6 +106,8 @@ Route::middleware('auth')->group(function () {
         ->middleware('permission:stock.view')
         ->name('stock.index');
 
+    require __DIR__.'/orders.php';
+
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
