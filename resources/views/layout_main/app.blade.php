@@ -23,6 +23,18 @@
     <!-- Title -->
     <title>Fila - Bootstrap 5 Admin Dashboard Template</title>
     @stack('styles')
+    <style>
+        #layout-menu .menu-link.active,
+        #layout-menu .menu-link.active .title,
+        #layout-menu .menu-sub .menu-link.active {
+            color: #EF4923;
+            font-weight: 600;
+        }
+
+        #layout-menu .menu-link.active .menu-icon {
+            color: #EF4923;
+        }
+    </style>
 </head>
 
 <body class="bg-body-bg">

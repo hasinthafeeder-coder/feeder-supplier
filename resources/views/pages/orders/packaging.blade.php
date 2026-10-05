@@ -43,28 +43,46 @@
 
             @if ($canPack)
                 <div class="card bg-white rounded-10 border border-white mb-3">
+                    <div class="p-20 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <h4 class="fs-18 mb-0">Scan Waybill / Order ID</h4>
+                    </div>
                     <div class="p-20">
-                        <label for="packagingOrderScanInput" class="label fs-15 fw-medium mb-2">Scan Waybill / Order ID</label>
-                        <div class="position-relative">
-                            <input
-                                type="text"
-                                class="form-control form-control-lg fs-18"
-                                id="packagingOrderScanInput"
-                                autocomplete="off"
-                                autocorrect="off"
-                                autocapitalize="off"
-                                spellcheck="false"
-                                placeholder="Scan waybill or order ID and press Enter"
-                                autofocus
-                                style="height: 56px; padding-right: 3rem;"
-                            >
-                            <span class="material-symbols-outlined position-absolute top-50 end-0 translate-middle-y me-3 text-body-secondary" aria-hidden="true">barcode_scanner</span>
-                        </div>
-                        <div class="d-flex align-items-center gap-2 mt-2">
-                            <div id="packagingOrderScanBusy" class="d-none">
-                                <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                        <div class="order-ui-scan-zone" id="packagingOrderScanZone">
+                            <span class="material-symbols-outlined d-block" aria-hidden="true">barcode_scanner</span>
+                            <h4 class="fs-18 mb-2">Scan waybill or order ID</h4>
+                            <p class="fs-14 text-body mb-3">
+                                Use your barcode scanner or type the waybill / Feeder Order ID and press Enter.
+                            </p>
+                            <div class="order-ui-scan-input-wrap">
+                                <label for="packagingOrderScanInput" class="visually-hidden">Scan Waybill / Order ID</label>
+                                <input
+                                    type="text"
+                                    class="form-control"
+                                    id="packagingOrderScanInput"
+                                    autocomplete="off"
+                                    autocorrect="off"
+                                    autocapitalize="off"
+                                    spellcheck="false"
+                                    placeholder="Scan waybill or order ID and press Enter"
+                                    autofocus
+                                >
                             </div>
-                            <p class="fs-14 text-muted mb-0" id="packagingOrderScanHint">Focus stays on this input for continuous scanning.</p>
+                            <div class="order-ui-scan-status mt-3">
+                                <div id="packagingOrderScanBusy" class="d-none">
+                                    <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                                </div>
+                                <p class="fs-13 text-body mb-0" id="packagingOrderScanHint">Focus stays on this input for continuous scanning.</p>
+                            </div>
+                        </div>
+                        <div class="row g-3 mt-1">
+                            <div class="col-md-6">
+                                <div class="fs-13 text-body">Waybill</div>
+                                <div class="fw-medium">Courier tracking barcode on the invoice</div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="fs-13 text-body">Feeder Order ID</div>
+                                <div class="fw-medium">11-digit order number printed on the packing slip</div>
+                            </div>
                         </div>
                     </div>
                 </div>

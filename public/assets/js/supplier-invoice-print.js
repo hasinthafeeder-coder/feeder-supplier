@@ -748,6 +748,13 @@ bodyHtml +
                     '</section>' +
 
                     '<section class="inv-section">' +
+                        '<span class="inv-section-title">Invoice</span>' +
+                        '<div class="inv-invoice-line">' +
+                            '<span class="inv-invoice-label">Invoice Number</span> : ' + escapeHtml(invoiceNumber || '—') +
+                        '</div>' +
+                    '</section>' +
+
+                    '<section class="inv-section">' +
                         '<span class="inv-section-title">Order Items</span>' +
                         itemsHtml +
                         '<div class="inv-charges">' +
@@ -763,15 +770,9 @@ bodyHtml +
                     '</section>' +
 
                     '<section class="inv-section">' +
-                        '<span class="inv-section-title">Invoice</span>' +
-                        '<div class="inv-invoice-line">' +
-                            '<span class="inv-invoice-label">Invoice Number</span> : ' + escapeHtml(invoiceNumber || '—') +
-                        '</div>' +
-                    '</section>' +
-
-                    '<section class="inv-section">' +
                         paymentBlock +
                     '</section>' +
+
                 '</section>'
             );
         }).join('');

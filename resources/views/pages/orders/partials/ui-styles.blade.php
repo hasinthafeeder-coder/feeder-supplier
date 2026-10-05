@@ -217,6 +217,45 @@
         vertical-align: middle !important;
     }
 
+    .supplier-orders-ui .order-ui-scan-zone {
+        border: 1px dashed rgba(15, 23, 42, 0.18);
+        border-radius: 10px;
+        background: #f8fafc;
+        padding: 2rem 1.25rem;
+        text-align: center;
+    }
+
+    .supplier-orders-ui .order-ui-scan-zone:focus-within {
+        border-color: #ef4923;
+        background: rgba(239, 73, 35, 0.06);
+    }
+
+    .supplier-orders-ui .order-ui-scan-zone .material-symbols-outlined {
+        font-size: 42px;
+        color: #ef4923;
+        margin-bottom: 0.75rem;
+    }
+
+    .supplier-orders-ui .order-ui-scan-input-wrap {
+        max-width: 420px;
+        width: 100%;
+        margin: 0 auto;
+    }
+
+    .supplier-orders-ui .order-ui-scan-input-wrap input {
+        height: 48px;
+        font-size: 16px;
+        text-align: center;
+    }
+
+    .supplier-orders-ui .order-ui-scan-status {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        min-height: 1.25rem;
+    }
+
     @media (max-width: 1199.98px) {
         .supplier-orders-ui .advanced-filters,
         .supplier-orders-ui .advanced-filters.is-compact {
