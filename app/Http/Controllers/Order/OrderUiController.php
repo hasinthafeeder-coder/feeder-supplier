@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Order;
 
 use App\Http\Controllers\Controller;
+use App\Services\Order\SupplierAfterDispatchWorkspaceService;
 use Feeder\Core\Exceptions\SupplierFulfillmentException;
 use Feeder\Core\Models\Order;
 use Feeder\Core\Services\Order\SupplierFulfillmentBatchService;
@@ -16,6 +17,7 @@ class OrderUiController extends Controller
 {
     public function __construct(
         private readonly SupplierOrderApiService $orderApiService,
+        private readonly SupplierAfterDispatchWorkspaceService $afterDispatchWorkspace,
     ) {
     }
 
@@ -60,6 +62,71 @@ class OrderUiController extends Controller
         ]));
     }
 
+    /**
+     * Dispatch Orders - live supplier-scoped list + inline return scanner.
+     */
+    public function dispatch(): View
+    {
+        $supplierId = (int) Auth::id();
+        $summaryCounts = [
+            'dispatched' => 0,
+            'returned_today' => 0,
+        ];
+
+        if ($supplierId > 0) {
+            $summaryCounts = $this->orderApiService->dispatchSummaryCounts($supplierId);
+        }
+
+        return view('pages.orders.dispatch', array_merge($this->pagePermissions(), [
+            'summaryCounts' => $summaryCounts,
+            'courierOptions' => [],
+        ]));
+    }
+
+    /**
+     * Completed Orders - DELIVERED and RETURNED inside the shared archive window.
+     */
+    public function completed(): View
+    {
+        return view('pages.orders.completed', array_merge(
+            $this->pagePermissions(),
+            $this->afterDispatchWorkspace->completed((int) Auth::id()),
+        ));
+    }
+
+    /**
+     * Archived Orders - DELIVERED and RETURNED outside the shared archive window.
+     */
+    public function archived(): View
+    {
+        return view('pages.orders.archived', array_merge(
+            $this->pagePermissions(),
+            $this->afterDispatchWorkspace->archived((int) Auth::id()),
+        ));
+    }
+
+    /**
+     * Dispatch Summary - live DISPATCHED, DELIVERED, and RETURNED shipment records.
+     */
+    public function dispatchSummary(): View
+    {
+        return view('pages.orders.dispatch-summary', array_merge(
+            $this->pagePermissions(),
+            $this->afterDispatchWorkspace->dispatchSummary((int) Auth::id()),
+        ));
+    }
+
+    /**
+     * Order Payments - persisted supplier settlement invoices and payments.
+     */
+    public function orderPayments(): View
+    {
+        return view('pages.orders.order-payments', array_merge(
+            $this->pagePermissions(),
+            $this->afterDispatchWorkspace->orderPayments((int) Auth::id()),
+        ));
+    }
+
     public function show(Order $order): View
     {
         $supplierId = (int) Auth::id();
@@ -83,7 +150,8 @@ class OrderUiController extends Controller
      *     canCancel: bool,
      *     canPrint: bool,
      *     canSendToPacking: bool,
-     *     canPack: bool
+     *     canPack: bool,
+     *     canReturn: bool
      * }
      */
     private function pagePermissions(): array
@@ -97,6 +165,7 @@ class OrderUiController extends Controller
             'canPrint' => $user?->hasPermission('orders.print') === true,
             'canSendToPacking' => $user?->hasPermission('orders.send-to-packing') === true,
             'canPack' => $user?->hasPermission('orders.pack') === true,
+            'canReturn' => $user?->hasPermission('orders.return') === true,
         ];
     }
 }

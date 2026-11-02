@@ -3,7 +3,11 @@
 @php
     $variants = $variants ?? null;
     $counts = $counts ?? ['all' => 0, 'in_stock' => 0, 'out_of_stock' => 0];
-    $filters = $filters ?? ['search' => ''];
+    $filters = $filters ?? ['search' => '', 'stock_status' => ''];
+    $activeStockStatus = $filters['stock_status'] ?? '';
+    $stockFilterQuery = array_filter([
+        'search' => $filters['search'] !== '' ? $filters['search'] : null,
+    ]);
 @endphp
 
 @section('content')
@@ -33,6 +37,9 @@
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 p-20">
                 <div class="d-flex flex-wrap gap-2 gap-xxl-5 align-items-center">
                     <form method="GET" action="{{ route('stock.index') }}" class="table-src-form position-relative m-0">
+                        @if ($activeStockStatus !== '')
+                            <input type="hidden" name="stock_status" value="{{ $activeStockStatus }}">
+                        @endif
                         <input type="text" class="form-control w-340" name="search"
                             value="{{ $filters['search'] }}" placeholder="Search product, variant, barcode...">
                         <button type="submit"
@@ -40,15 +47,28 @@
                             <span class="material-symbols-outlined">search</span>
                         </button>
                     </form>
-                    <ul class="p-0 mb-0 list-unstyled d-flex align-items-center flex-wrap" style="gap: 20px;">
+                    <ul class="p-0 mb-0 list-unstyled d-flex align-items-center flex-wrap" style="gap: 20px;"
+                        aria-label="Stock status filters">
                         <li class="fs-16">
-                            All Variants <span class="text-primary">({{ number_format($counts['all']) }})</span>
+                            <a href="{{ route('stock.index', $stockFilterQuery) }}"
+                                class="text-decoration-none {{ $activeStockStatus === '' ? 'text-secondary fw-semibold' : 'text-body' }}"
+                                @if ($activeStockStatus === '') aria-current="true" @endif>
+                                All Variants <span class="text-primary">({{ number_format($counts['all']) }})</span>
+                            </a>
                         </li>
                         <li class="fs-16">
-                            In Stock <span class="text-primary">({{ number_format($counts['in_stock']) }})</span>
+                            <a href="{{ route('stock.index', $stockFilterQuery + ['stock_status' => 'in_stock']) }}"
+                                class="text-decoration-none {{ $activeStockStatus === 'in_stock' ? 'text-secondary fw-semibold' : 'text-body' }}"
+                                @if ($activeStockStatus === 'in_stock') aria-current="true" @endif>
+                                In Stock <span class="text-primary">({{ number_format($counts['in_stock']) }})</span>
+                            </a>
                         </li>
                         <li class="fs-16">
-                            Out of Stock <span class="text-primary">({{ number_format($counts['out_of_stock']) }})</span>
+                            <a href="{{ route('stock.index', $stockFilterQuery + ['stock_status' => 'out_of_stock']) }}"
+                                class="text-decoration-none {{ $activeStockStatus === 'out_of_stock' ? 'text-secondary fw-semibold' : 'text-body' }}"
+                                @if ($activeStockStatus === 'out_of_stock') aria-current="true" @endif>
+                                Out of Stock <span class="text-primary">({{ number_format($counts['out_of_stock']) }})</span>
+                            </a>
                         </li>
                     </ul>
                 </div>

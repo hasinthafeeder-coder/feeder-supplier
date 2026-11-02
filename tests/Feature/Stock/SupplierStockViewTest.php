@@ -124,6 +124,124 @@ class SupplierStockViewTest extends TestCase
             ->assertSee('Out of Stock');
     }
 
+    public function test_supplier_stock_summary_counts_match_owned_variants(): void
+    {
+        $this->allowPermissions(['stock.view']);
+
+        $supplier = $this->makeSupplierUser();
+        $otherSupplier = $this->makeSupplierUser('Other Count Supplier Co');
+
+        $inVariant = $this->makeVariantForSupplier($supplier, 'Counted In Stock', 'Default');
+        $this->makeVariantForSupplier($supplier, 'Counted Out Of Stock', 'Default');
+        $this->makeVariantForSupplier($otherSupplier, 'Foreign Variant', 'Default');
+
+        app(GoodsReceivedNoteService::class)->createGrn(
+            $supplier->id,
+            [
+                'received_date' => now()->toDateString(),
+                'created_by' => $supplier->id,
+                'updated_by' => $supplier->id,
+            ],
+            [[
+                'product_id' => $inVariant->product_id,
+                'product_variant_id' => $inVariant->id,
+                'received_quantity' => 15,
+                'damaged_quantity' => 0,
+                'unit_cost' => '100.00',
+            ]]
+        );
+
+        $this->actingAs($supplier)
+            ->get(route('stock.index'))
+            ->assertOk()
+            ->assertSee('All Variants')
+            ->assertSee('(2)', false)
+            ->assertSee('In Stock')
+            ->assertSee('(1)', false)
+            ->assertSee('Out of Stock')
+            ->assertDontSee('Foreign Variant');
+    }
+
+    public function test_supplier_can_filter_stock_list_by_stock_status(): void
+    {
+        $this->allowPermissions(['stock.view']);
+
+        $supplier = $this->makeSupplierUser();
+        $inVariant = $this->makeVariantForSupplier($supplier, 'Filter In Stock Item', 'Default');
+        $this->makeVariantForSupplier($supplier, 'Filter Out Of Stock Item', 'Default');
+
+        app(GoodsReceivedNoteService::class)->createGrn(
+            $supplier->id,
+            [
+                'received_date' => now()->toDateString(),
+                'created_by' => $supplier->id,
+                'updated_by' => $supplier->id,
+            ],
+            [[
+                'product_id' => $inVariant->product_id,
+                'product_variant_id' => $inVariant->id,
+                'received_quantity' => 20,
+                'damaged_quantity' => 0,
+                'unit_cost' => '100.00',
+            ]]
+        );
+
+        $this->actingAs($supplier)
+            ->get(route('stock.index', ['stock_status' => 'in_stock']))
+            ->assertOk()
+            ->assertSee('Filter In Stock Item')
+            ->assertDontSee('Filter Out Of Stock Item')
+            ->assertSee('stock_status=in_stock', false);
+
+        $this->actingAs($supplier)
+            ->get(route('stock.index', ['stock_status' => 'out_of_stock']))
+            ->assertOk()
+            ->assertSee('Filter Out Of Stock Item')
+            ->assertDontSee('Filter In Stock Item');
+
+        $this->actingAs($supplier)
+            ->get(route('stock.index'))
+            ->assertOk()
+            ->assertSee('Filter In Stock Item')
+            ->assertSee('Filter Out Of Stock Item');
+    }
+
+    public function test_supplier_stock_status_filter_works_with_search(): void
+    {
+        $this->allowPermissions(['stock.view']);
+
+        $supplier = $this->makeSupplierUser();
+        $matchingInStock = $this->makeVariantForSupplier($supplier, 'Alpha In Stock', 'Default');
+        $this->makeVariantForSupplier($supplier, 'Alpha Out Of Stock', 'Default');
+        $this->makeVariantForSupplier($supplier, 'Beta In Stock', 'Default');
+
+        app(GoodsReceivedNoteService::class)->createGrn(
+            $supplier->id,
+            [
+                'received_date' => now()->toDateString(),
+                'created_by' => $supplier->id,
+                'updated_by' => $supplier->id,
+            ],
+            [[
+                'product_id' => $matchingInStock->product_id,
+                'product_variant_id' => $matchingInStock->id,
+                'received_quantity' => 8,
+                'damaged_quantity' => 0,
+                'unit_cost' => '100.00',
+            ]]
+        );
+
+        $this->actingAs($supplier)
+            ->get(route('stock.index', [
+                'search' => 'Alpha',
+                'stock_status' => 'in_stock',
+            ]))
+            ->assertOk()
+            ->assertSee('Alpha In Stock')
+            ->assertDontSee('Alpha Out Of Stock')
+            ->assertDontSee('Beta In Stock');
+    }
+
     /**
      * @param  list<string>  $permissions
      */

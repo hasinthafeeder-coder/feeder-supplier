@@ -206,15 +206,231 @@
     }
 
     .supplier-orders-ui .badge-status.is-print,
-    .supplier-orders-ui .badge-status.is-packing {
+    .supplier-orders-ui .badge-status.is-packing,
+    .supplier-orders-ui .badge-status.is-dispatched {
         background: #cfe2ff;
         color: #084298;
+    }
+
+    .supplier-orders-ui .badge-status.is-delivered {
+        background: #d1e7dd;
+        color: #0f5132;
+    }
+
+    .supplier-orders-ui .badge-status.is-returned {
+        background: #fff3cd;
+        color: #664d03;
+    }
+
+    .supplier-orders-ui .badge-status.is-payment-pending {
+        background: #fff3cd;
+        color: #664d03;
+    }
+
+    .supplier-orders-ui .badge-status.is-payment-received {
+        background: #d1e7dd;
+        color: #0f5132;
+    }
+
+    .supplier-orders-ui .badge-status.is-payment-paid {
+        background: #cfe2ff;
+        color: #084298;
+    }
+
+    .supplier-orders-ui .badge-status.is-settlement-pending {
+        background: #fff3cd;
+        color: #664d03;
+    }
+
+    .supplier-orders-ui .badge-status.is-settled {
+        background: #d1e7dd;
+        color: #0f5132;
+    }
+
+    .supplier-orders-ui .dispatch-summary-cards {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+    }
+
+    .supplier-orders-ui .dispatch-summary-cards.dispatch-orders-summary-cards {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .supplier-orders-ui .dispatch-summary-cards.order-payments-summary-cards,
+    .supplier-orders-ui .dispatch-summary-cards.completed-orders-summary-cards {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .supplier-orders-ui .dispatch-summary-card {
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        background: #fff;
+        border-radius: 10px;
+        padding: 1rem 1.1rem;
+        text-align: left;
+        width: 100%;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .supplier-orders-ui .dispatch-summary-card:hover,
+    .supplier-orders-ui .dispatch-summary-card.is-active {
+        border-color: rgba(239, 73, 35, 0.35);
+        box-shadow: 0 0 0 1px rgba(239, 73, 35, 0.12);
+    }
+
+    .supplier-orders-ui .dispatch-summary-card .summary-label {
+        font-size: 12px;
+        font-weight: 600;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        margin-bottom: 0.35rem;
+    }
+
+    .supplier-orders-ui .dispatch-summary-card .summary-count {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #0f172a;
+        line-height: 1.1;
+        margin: 0;
+    }
+
+    .supplier-orders-ui .dispatch-summary-card .summary-count.summary-count-sm {
+        font-size: 1.15rem;
+    }
+
+    .supplier-orders-ui .dispatch-summary-card .summary-supporting {
+        font-size: 12px;
+        color: #64748b;
+        margin-top: 0.35rem;
+        line-height: 1.35;
+    }
+
+    .supplier-orders-ui .dispatch-summary-card.is-static {
+        cursor: default;
+    }
+
+    .supplier-orders-ui .dispatch-summary-card.is-static:hover {
+        border-color: rgba(15, 23, 42, 0.08);
+        box-shadow: none;
+    }
+
+    @media (max-width: 1199.98px) {
+        .supplier-orders-ui .dispatch-summary-cards.order-payments-summary-cards,
+        .supplier-orders-ui .dispatch-summary-cards.completed-orders-summary-cards {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    @media (max-width: 767.98px) {
+        .supplier-orders-ui .dispatch-summary-cards,
+        .supplier-orders-ui .dispatch-summary-cards.order-payments-summary-cards,
+        .supplier-orders-ui .dispatch-summary-cards.completed-orders-summary-cards {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .supplier-orders-ui .dispatch-note-callout {
+        background: #f8fafc;
+    }
+
+    .supplier-orders-ui .advanced-filters.dispatch-summary-history-filters {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .supplier-orders-ui .dispatch-summary-preview-strip {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.75rem;
+        padding: 0.85rem 1rem;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        border-radius: 10px;
+        background: #fafbfc;
+    }
+
+    .supplier-orders-ui .dispatch-summary-preview-strip .preview-label {
+        display: block;
+        font-size: 11px;
+        font-weight: 650;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        color: #64748b;
+        margin-bottom: 0.2rem;
+    }
+
+    .supplier-orders-ui .dispatch-summary-preview-strip .preview-value {
+        display: block;
+        font-size: 15px;
+        font-weight: 700;
+        color: #0f172a;
+        line-height: 1.25;
+    }
+
+    .supplier-orders-ui .dispatch-summary-modal-table-wrap {
+        max-height: min(42vh, 360px);
+        overflow: auto;
+        border: 1px solid rgba(15, 23, 42, 0.06);
+        border-radius: 8px;
+    }
+
+    .supplier-orders-ui .dispatch-summary-modal-table-wrap .orders-table thead th {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+    }
+
+    @media (max-width: 767.98px) {
+        .supplier-orders-ui .dispatch-summary-preview-strip {
+            grid-template-columns: 1fr;
+        }
     }
 
     .supplier-orders-ui .order-ui-select-col {
         width: 2.25rem;
         text-align: center;
         vertical-align: middle !important;
+    }
+
+    .supplier-orders-ui .dispatch-return-damaged-check {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.45rem 0.8rem;
+        border: 1px solid rgba(15, 23, 42, 0.14);
+        border-radius: 8px;
+        background: #fff;
+        white-space: normal;
+        max-width: 100%;
+        margin: 0;
+        cursor: pointer;
+        float: none;
+        min-height: 0;
+        padding-left: 0.8rem;
+    }
+
+    .supplier-orders-ui .dispatch-return-damaged-check .form-check-input {
+        position: static;
+        float: none;
+        margin: 0;
+        flex: 0 0 auto;
+        width: 1.1em;
+        height: 1.1em;
+    }
+
+    .supplier-orders-ui .dispatch-return-damaged-check > span {
+        line-height: 1.3;
+    }
+
+    .supplier-orders-ui .dispatch-return-damaged-check.is-checked {
+        border-color: #ef4923;
+        background: rgba(239, 73, 35, 0.08);
+        color: #9a2a12;
+    }
+
+    .supplier-orders-ui .dispatch-return-damaged-check.is-checked .form-check-input {
+        background-color: #ef4923;
+        border-color: #ef4923;
     }
 
     .supplier-orders-ui .order-ui-scan-zone {

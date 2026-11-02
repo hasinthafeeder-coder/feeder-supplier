@@ -1,9 +1,11 @@
 <?php
 
+use App\Http\Controllers\Order\DispatchNoteController;
 use App\Http\Controllers\Order\OrderFulfillmentController;
 use App\Http\Controllers\Order\OrderListController;
 use App\Http\Controllers\Order\OrderPackagingController;
 use App\Http\Controllers\Order\OrderPrintController;
+use App\Http\Controllers\Order\OrderReturnController;
 use App\Http\Controllers\Order\OrderUiController;
 use Illuminate\Support\Facades\Route;
 
@@ -42,6 +44,35 @@ Route::prefix('orders')->group(function () {
         ->middleware('permission:orders.view')
         ->name('orders.ui.packaging');
 
+    Route::get('/dispatch-orders', [OrderUiController::class, 'dispatch'])
+        ->middleware('permission:orders.view')
+        ->name('orders.ui.dispatch');
+
+    Route::get('/completed-orders', [OrderUiController::class, 'completed'])
+        ->middleware('permission:orders.view')
+        ->name('orders.ui.completed');
+
+    Route::get('/archived-orders', [OrderUiController::class, 'archived'])
+        ->middleware('permission:orders.view')
+        ->name('orders.ui.archived');
+
+    Route::get('/dispatch-summary', [OrderUiController::class, 'dispatchSummary'])
+        ->middleware('permission:orders.view')
+        ->name('orders.ui.dispatch-summary');
+
+    Route::post('/dispatch-summary/notes', [DispatchNoteController::class, 'store'])
+        ->middleware('permission:orders.view')
+        ->name('orders.dispatch-summary.notes.store');
+
+    Route::get('/dispatch-summary/notes/{uuid}/print', [DispatchNoteController::class, 'print'])
+        ->middleware('permission:orders.view')
+        ->where('uuid', '[0-9a-fA-F-]{36}')
+        ->name('orders.dispatch-summary.notes.print');
+
+    Route::get('/order-payments', [OrderUiController::class, 'orderPayments'])
+        ->middleware('permission:orders.view')
+        ->name('orders.ui.order-payments');
+
     /*
     | JSON list / action APIs (Step 3)
     */
@@ -60,6 +91,10 @@ Route::prefix('orders')->group(function () {
     Route::get('/packaging', [OrderListController::class, 'packaging'])
         ->middleware('permission:orders.view')
         ->name('orders.packaging.index');
+
+    Route::get('/dispatch', [OrderListController::class, 'dispatch'])
+        ->middleware('permission:orders.view')
+        ->name('orders.dispatch.index');
 
     Route::post('/send-to-print', [OrderFulfillmentController::class, 'sendToPrint'])
         ->middleware('permission:orders.send-to-print')
@@ -88,6 +123,10 @@ Route::prefix('orders')->group(function () {
     Route::post('/packaging/complete', [OrderPackagingController::class, 'complete'])
         ->middleware('permission:orders.pack')
         ->name('orders.packaging.complete');
+
+    Route::post('/dispatch/scan-return', [OrderReturnController::class, 'scanReturn'])
+        ->middleware('permission:orders.return')
+        ->name('orders.dispatch.scan-return');
 
     Route::post('/{order}/cancel', [OrderPackagingController::class, 'cancel'])
         ->middleware('permission:orders.cancel')

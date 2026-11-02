@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Finance\FinancialOverviewController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
@@ -105,6 +106,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/stock', [\App\Http\Controllers\Stock\StockController::class, 'index'])
         ->middleware('permission:stock.view')
         ->name('stock.index');
+
+    Route::get('/finance/overview', [FinancialOverviewController::class, 'index'])
+        ->middleware('permission:dashboard.view')
+        ->name('finance.overview');
+
+    Route::get('/finance/overview/batches/{batch}', [FinancialOverviewController::class, 'showBatch'])
+        ->middleware('permission:dashboard.view')
+        ->name('finance.batches.show');
 
     require __DIR__.'/orders.php';
 

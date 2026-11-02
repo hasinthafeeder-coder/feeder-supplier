@@ -11,6 +11,9 @@
         $product?->status instanceof \Feeder\Core\Enums\ProductStatus
             ? $product->status->value
             : (string) ($product?->status ?? 'DRAFT');
+    $approvalStatus = $product?->approval_status instanceof \Feeder\Core\Enums\ProductApprovalStatus
+        ? $product->approval_status
+        : \Feeder\Core\Enums\ProductApprovalStatus::tryFrom((string) ($product?->approval_status ?? ''));
     $statusBadgeClass = match ($statusValue) {
         'ACTIVE' => 'bg-success-subtle text-success border border-success border-opacity-10',
         'INACTIVE' => 'bg-danger-subtle text-danger border border-danger border-opacity-10',
@@ -21,6 +24,13 @@
         'INACTIVE' => 'Inactive',
         default => 'Draft',
     };
+    $approvalBadgeClass = match ($approvalStatus) {
+        \Feeder\Core\Enums\ProductApprovalStatus::PENDING_REVIEW => 'bg-warning-subtle text-warning border border-warning border-opacity-10',
+        \Feeder\Core\Enums\ProductApprovalStatus::APPROVED => 'bg-success-subtle text-success border border-success border-opacity-10',
+        \Feeder\Core\Enums\ProductApprovalStatus::REJECTED => 'bg-danger-subtle text-danger border border-danger border-opacity-10',
+        default => 'bg-light text-body border',
+    };
+    $approvalLabel = $approvalStatus?->label() ?? 'Not submitted';
     $productLanguages = $productLanguages ?? [];
     $primaryLanguage = $productLanguages[0] ?? ['code' => 'en', 'label' => 'English'];
     $primaryDescription = $product?->descriptionFor($primaryLanguage['code']) ?? '';
@@ -59,6 +69,17 @@
 
         @if (session('success'))
             <div class="alert alert-success">{{ session('success') }}</div>
+        @endif
+
+        @if ($approvalStatus === \Feeder\Core\Enums\ProductApprovalStatus::REJECTED && filled($product?->rejection_reason))
+            <div class="alert alert-danger" role="alert">
+                <strong>Rejected by admin.</strong> {{ $product->rejection_reason }}
+                <div class="small mt-1">Edit the product and submit it again for review.</div>
+            </div>
+        @elseif ($approvalStatus === \Feeder\Core\Enums\ProductApprovalStatus::PENDING_REVIEW)
+            <div class="alert alert-warning" role="alert">
+                This product is pending admin review and is not available to resellers yet.
+            </div>
         @endif
 
         <div class="card bg-white p-20 rounded-10 border border-white mb-4">
@@ -111,9 +132,14 @@
                 <div class="col-lg-6">
                     <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
                         <div>
-                            <span class="badge {{ $statusBadgeClass }} mb-3">
-                                {{ $statusLabel }}
-                            </span>
+                            <div class="d-flex flex-wrap gap-2 mb-3">
+                                <span class="badge {{ $statusBadgeClass }}">
+                                    {{ $statusLabel }}
+                                </span>
+                                <span class="badge {{ $approvalBadgeClass }}">
+                                    {{ $approvalLabel }}
+                                </span>
+                            </div>
                             <h3 class="mb-0">{{ $product->name }}</h3>
                         </div>
                         <div class="d-flex flex-wrap gap-2">

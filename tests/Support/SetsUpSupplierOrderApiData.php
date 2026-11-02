@@ -27,6 +27,7 @@ use Feeder\Core\Models\ResellerSupplierAssignment;
 use Feeder\Core\Models\Shipment;
 use Feeder\Core\Models\SupplierCourierAccount;
 use Feeder\Core\Services\GoodsReceivedNoteService;
+use Feeder\Core\Services\Order\OrderNumberGenerator;
 use Feeder\Core\Services\Order\OrderService;
 use Feeder\Core\Services\Order\OrderStatusService;
 use Feeder\Core\Services\Order\SupplierFulfillmentService;
@@ -44,6 +45,32 @@ trait SetsUpSupplierOrderApiData
      * @var list<string>
      */
     private array $allowedPermissions = [];
+
+    private int $supplierApiOrderNumberSeq = 0;
+
+    private bool $supplierApiOrderNumberMocked = false;
+
+    /**
+     * Avoid collisions with committed order numbers outside the test transaction.
+     */
+    protected function mockUniqueSupplierApiOrderNumbers(): void
+    {
+        if ($this->supplierApiOrderNumberMocked) {
+            return;
+        }
+
+        $this->supplierApiOrderNumberMocked = true;
+
+        $generator = Mockery::mock(OrderNumberGenerator::class);
+        $generator->shouldReceive('allocateNext')
+            ->andReturnUsing(function (): string {
+                $this->supplierApiOrderNumberSeq++;
+
+                return '9'.str_pad((string) (860000000 + $this->supplierApiOrderNumberSeq), 11, '0', STR_PAD_LEFT);
+            });
+
+        $this->app->instance(OrderNumberGenerator::class, $generator);
+    }
 
     /**
      * @param  list<string>  $permissions
@@ -253,6 +280,8 @@ trait SetsUpSupplierOrderApiData
         array $items,
         OrderType $orderType = OrderType::NEW,
     ): Order {
+        $this->mockUniqueSupplierApiOrderNumbers();
+
         $countryId = $this->countryByIso('LK')->id;
         $phone = '070'.random_int(1000000, 9999999);
 
@@ -426,6 +455,40 @@ trait SetsUpSupplierOrderApiData
             $context['supplier']->id,
         );
         app(SupplierFulfillmentService::class)->sendToPackaging(
+            $order->fresh(),
+            $context['supplier']->id,
+        );
+
+        return $order->fresh([
+            'fulfillment.items',
+            'items.variant',
+            'shipment.courier',
+            'address',
+        ]);
+    }
+
+    /**
+     * Advance a confirmed order through packing to DISPATCHED with a booked shipment.
+     */
+    protected function moveToDispatched(array $context): Order
+    {
+        $order = $this->moveToPackaging($context);
+        $fulfillmentService = app(SupplierFulfillmentService::class);
+
+        foreach ($order->items as $item) {
+            $barcode = (string) $item->variant->barcode;
+            $quantity = (int) $item->quantity;
+
+            for ($i = 0; $i < $quantity; $i++) {
+                $fulfillmentService->incrementPackedByBarcode(
+                    $order->fresh(),
+                    $barcode,
+                    $context['supplier']->id,
+                );
+            }
+        }
+
+        $fulfillmentService->completePackaging(
             $order->fresh(),
             $context['supplier']->id,
         );

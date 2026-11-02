@@ -12,6 +12,7 @@ use Feeder\Core\Models\Product;
 use Feeder\Core\Models\ProductCategory;
 use Feeder\Core\Models\User;
 use Feeder\Core\Services\MarketDefaultCompanyCommissionService;
+use Feeder\Core\Services\ProductApprovalService;
 use Feeder\Core\Services\ProductMarketLanguageService;
 use Feeder\Core\Services\ProductService;
 use Illuminate\Http\RedirectResponse;
@@ -24,6 +25,7 @@ class ProductController extends Controller
 
     public function __construct(
         private readonly ProductService $productService,
+        private readonly ProductApprovalService $productApprovalService,
         private readonly FileServerService $fileServerService,
         private readonly MarketDefaultCompanyCommissionService $marketCommissionService,
         private readonly ProductMarketLanguageService $productLanguageService,
@@ -63,7 +65,12 @@ class ProductController extends Controller
 
         $supplierId = (int) Auth::id();
         $action = (string) $request->input('save_action', 'draft');
-        $status = $this->productService->resolveStatus($action, null, true);
+        $submitForReview = in_array($action, ['publish', 'activate'], true);
+
+        // Supplier publish/activate submits for admin approval; never go ACTIVE here.
+        $status = $submitForReview
+            ? ProductStatus::DRAFT
+            : $this->productService->resolveStatus($action, null, true);
 
         $product = $this->productService->createProduct(
             [
@@ -81,11 +88,15 @@ class ProductController extends Controller
             $this->extractVariants($request),
             $this->uploadImages($request),
             $this->uploadGuideline($request),
+            lockAdminFinancialFields: true,
         );
 
-        $message = $status === ProductStatus::ACTIVE
-            ? 'Product published successfully.'
-            : 'Product saved as draft.';
+        if ($submitForReview) {
+            $this->productApprovalService->submitForReview($product, $supplierId);
+            $message = 'Product submitted for admin review.';
+        } else {
+            $message = 'Product saved as draft.';
+        }
 
         return redirect()
             ->route('products.index')
@@ -137,7 +148,17 @@ class ProductController extends Controller
 
         $supplierId = (int) Auth::id();
         $action = (string) $request->input('save_action', 'draft');
-        $status = $this->productService->resolveStatus($action, $product->status, false);
+        $isApproved = $product->isApprovalApproved();
+        $wantsLive = in_array($action, ['publish', 'activate'], true);
+        $submitForReview = $wantsLive && ! $isApproved;
+
+        if ($submitForReview) {
+            $status = ProductStatus::DRAFT;
+        } elseif ($wantsLive && $isApproved) {
+            $status = ProductStatus::ACTIVE;
+        } else {
+            $status = $this->productService->resolveStatus($action, $product->status, false);
+        }
 
         $this->productService->updateProduct(
             $product,
@@ -154,14 +175,20 @@ class ProductController extends Controller
             $this->extractVariants($request),
             $this->uploadImages($request),
             $request->hasFile('guideline') ? $this->uploadGuideline($request) : null,
+            lockAdminFinancialFields: true,
         );
 
-        $message = match ($action) {
-            'publish' => 'Product published successfully.',
-            'deactivate' => 'Product deactivated successfully.',
-            'activate' => 'Product activated successfully.',
-            default => 'Product updated successfully.',
-        };
+        if ($submitForReview) {
+            $this->productApprovalService->submitForReview($product->fresh(), $supplierId);
+            $message = 'Product submitted for admin review.';
+        } else {
+            $message = match ($action) {
+                'publish' => 'Product published successfully.',
+                'deactivate' => 'Product deactivated successfully.',
+                'activate' => 'Product activated successfully.',
+                default => 'Product updated successfully.',
+            };
+        }
 
         return redirect()
             ->route('products.index')
@@ -194,7 +221,18 @@ class ProductController extends Controller
     {
         $this->authorizeProductOwner($product);
 
-        $this->productService->activateProduct($product, (int) Auth::id());
+        $supplierId = (int) Auth::id();
+
+        // Unapproved products must go through admin review, not direct activation.
+        if (! $product->isApprovalApproved()) {
+            $this->productApprovalService->submitForReview($product, $supplierId);
+
+            return redirect()
+                ->route('products.show', $product)
+                ->with('success', 'Product submitted for admin review.');
+        }
+
+        $this->productService->activateProduct($product, $supplierId);
 
         return redirect()
             ->route('products.show', $product)
@@ -313,7 +351,7 @@ class ProductController extends Controller
                 'suggested_price' => $priceLocked ? ($variant['suggested_price'] ?? null) : null,
                 'suggested_price_min' => $priceLocked ? null : ($variant['suggested_price_min'] ?? null),
                 'suggested_price_max' => $priceLocked ? null : ($variant['suggested_price_max'] ?? null),
-                'company_commission' => $variant['company_commission'] ?? null,
+                // Company commission is Admin-only; omit so ProductService resolves market default / existing.
                 'reorder_level' => (int) ($variant['reorder_level'] ?? 0),
                 'sort_order' => $index,
                 'is_active' => true,

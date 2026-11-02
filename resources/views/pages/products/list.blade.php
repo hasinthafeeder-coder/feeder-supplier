@@ -91,11 +91,21 @@
                                     $statusValue = $product->status instanceof \Feeder\Core\Enums\ProductStatus
                                         ? $product->status->value
                                         : (string) $product->status;
+                                    $approvalStatus = $product->approval_status instanceof \Feeder\Core\Enums\ProductApprovalStatus
+                                        ? $product->approval_status
+                                        : \Feeder\Core\Enums\ProductApprovalStatus::tryFrom((string) ($product->approval_status ?? ''));
                                     $statusBadgeClass = match ($statusValue) {
                                         'ACTIVE' => 'bg-success-subtle text-success border border-success border-opacity-10',
                                         'INACTIVE' => 'bg-danger-subtle text-danger border border-danger border-opacity-10',
                                         default => 'bg-primary-subtle text-primary border border-primary border-opacity-10',
                                     };
+                                    $approvalBadgeClass = match ($approvalStatus) {
+                                        \Feeder\Core\Enums\ProductApprovalStatus::PENDING_REVIEW => 'bg-warning-subtle text-warning border border-warning border-opacity-10',
+                                        \Feeder\Core\Enums\ProductApprovalStatus::APPROVED => 'bg-success-subtle text-success border border-success border-opacity-10',
+                                        \Feeder\Core\Enums\ProductApprovalStatus::REJECTED => 'bg-danger-subtle text-danger border border-danger border-opacity-10',
+                                        default => 'bg-light text-body border',
+                                    };
+                                    $approvalLabel = $approvalStatus?->label() ?? 'Not submitted';
                                 @endphp
                                 <tr>
                                     <td class="text-body" style="width: 62px;">
@@ -120,8 +130,9 @@
                                             <div class="flex-grow-1 ms-12">
                                                 <a href="{{ route('products.show', $product) }}"
                                                     class="fs-16 text-secondary text-decoration-none hover-text fw-medium">{{ $product->name }}</a>
-                                                <div class="mt-1">
+                                                <div class="mt-1 d-flex flex-wrap gap-1">
                                                     <span class="badge {{ $statusBadgeClass }}">{{ $statusValue }}</span>
+                                                    <span class="badge {{ $approvalBadgeClass }}">{{ $approvalLabel }}</span>
                                                 </div>
                                                 <div class="mt-1">
                                                     @if ($product->market?->country?->iso_code && $productCurrency)

@@ -18,12 +18,14 @@ class StockController extends Controller
     {
         $supplierId = (int) Auth::id();
         $search = trim((string) $request->input('search', ''));
+        $stockStatus = (string) $request->input('stock_status', '');
 
         return view('pages.stock.list', [
-            'variants' => $this->stockListService->paginateForSupplier($supplierId, $search),
+            'variants' => $this->stockListService->paginateForSupplier($supplierId, $search, $stockStatus),
             'counts' => $this->stockListService->supplierCounts($supplierId),
             'filters' => [
                 'search' => $search,
+                'stock_status' => in_array($stockStatus, ['in_stock', 'out_of_stock'], true) ? $stockStatus : '',
             ],
         ]);
     }

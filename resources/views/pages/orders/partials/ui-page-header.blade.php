@@ -2,6 +2,7 @@
     $pageTitle = $pageTitle ?? 'Orders';
     $pageCopy = $pageCopy ?? '';
     $crumbs = $crumbs ?? [];
+    $headerActions = $headerActions ?? null;
 @endphp
 <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-2 mt-1">
     <div>
@@ -10,6 +11,11 @@
             <p class="fs-15 text-body mb-0">{{ $pageCopy }}</p>
         @endif
     </div>
+    @if ($headerActions)
+        <div class="d-flex align-items-center flex-wrap gap-2">
+            {!! $headerActions !!}
+        </div>
+    @endif
 </div>
 
 <nav aria-label="breadcrumb" class="mb-4">

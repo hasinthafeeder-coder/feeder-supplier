@@ -138,6 +138,23 @@
             </div>
         @endif
 
+        @php
+            $editApprovalStatus = $product?->approval_status instanceof \Feeder\Core\Enums\ProductApprovalStatus
+                ? $product->approval_status
+                : \Feeder\Core\Enums\ProductApprovalStatus::tryFrom((string) ($product?->approval_status ?? ''));
+        @endphp
+
+        @if ($editApprovalStatus === \Feeder\Core\Enums\ProductApprovalStatus::REJECTED && filled($product?->rejection_reason))
+            <div class="alert alert-danger" role="alert">
+                <strong>Rejected by admin.</strong> {{ $product->rejection_reason }}
+                <div class="small mt-1">Update the product details and click Submit for Review.</div>
+            </div>
+        @elseif ($editApprovalStatus === \Feeder\Core\Enums\ProductApprovalStatus::PENDING_REVIEW)
+            <div class="alert alert-warning" role="alert">
+                This product is pending admin review. Saving changes keeps it in the review queue.
+            </div>
+        @endif
+
         <div class="card bg-white p-20 rounded-10 border border-white mb-4">
             <form action="{{ isset($product) ? route('products.update', $product) : route('products.store') }}"
                 method="POST" enctype="multipart/form-data">
@@ -149,7 +166,12 @@
                     <div class="col-12">
                         <div class="d-flex justify-content-between align-items-center mb-20">
                             <h3 class="mb-0">Product Information</h3>
-                            <span class="badge {{ $statusBadgeClass }}">{{ $productStatus }}</span>
+                            <div class="d-flex flex-wrap gap-2">
+                                <span class="badge {{ $statusBadgeClass }}">{{ $productStatus }}</span>
+                                @if ($editApprovalStatus)
+                                    <span class="badge bg-light text-body border">{{ $editApprovalStatus->label() }}</span>
+                                @endif
+                            </div>
                         </div>
 
                         <div class="row g-3">
@@ -303,8 +325,15 @@
                     <div class="col-12 d-flex justify-content-end gap-2 pt-2">
                         <button type="submit" name="save_action" value="draft" class="btn btn-light border">Save
                             Draft</button>
+                        @php
+                            $isApprovedProduct = $product
+                                && method_exists($product, 'isApprovalApproved')
+                                && $product->isApprovalApproved();
+                        @endphp
                         <button type="submit" name="save_action" value="publish"
-                            class="btn btn-primary text-white">Publish Product</button>
+                            class="btn btn-primary text-white">
+                            {{ $isApprovedProduct ? 'Publish Product' : 'Submit for Review' }}
+                        </button>
                     </div>
                 </div>
             </form>
@@ -749,8 +778,12 @@
                 const suggestedRange = resolveSuggestedRangeValues(variant);
                 const variantSuggestedMin = suggestedRange.min;
                 const variantSuggestedMax = suggestedRange.max;
-                const variantCommission = variant?.company_commission ?? defaultCompanyCommission;
                 const variantReorderLevel = variant?.reorder_level ?? 0;
+                const costLocked = Boolean(variant && variant.id);
+                const costReadonlyAttr = costLocked ? 'readonly' : '';
+                const costHint = costLocked
+                    ? 'Cost is Admin-managed and cannot be changed by suppliers.'
+                    : 'Initial cost only. After save, only Admin can change cost.';
                 row.innerHTML = `
                     <div class="variant-header d-flex justify-content-between align-items-center">
                         <div><h5 class="mb-0">Variant ${variantCount}</h5></div>
@@ -773,8 +806,9 @@
                                 <label class="label fs-14 mb-2">Cost</label>
                                 <div class="input-group">
                                     <span class="input-group-text">${currencyIsoCode}</span>
-                                    <input type="number" min="0" step="0.01" class="form-control" name="variants[${variantIndex}][cost]" value="${variantCost}" placeholder="0.00" required>
+                                    <input type="number" min="0" step="0.01" class="form-control" name="variants[${variantIndex}][cost]" value="${variantCost}" placeholder="0.00" required ${costReadonlyAttr}>
                                 </div>
+                                <small class="text-muted d-block mt-1">${costHint}</small>
                             </div>
                             <div class="col-lg-6 variant-selling-price-group${locked ? '' : ' d-none'}">
                                 <label class="label fs-14 mb-2">Selling Price</label>
@@ -811,7 +845,9 @@
                                 <input type="number" min="0" step="1" class="form-control" name="variants[${variantIndex}][reorder_level]" value="${variantReorderLevel}" placeholder="0">
                                 <small class="text-muted">0 = no reorder level set</small>
                             </div>
-                            <input type="hidden" name="variants[${variantIndex}][company_commission]" value="${variantCommission}">
+                            <div class="col-12">
+                                <small class="text-muted">Company commission is Admin-managed (market default ${defaultCompanyCommission} ${currencyIsoCode} per unit). Suppliers cannot change it.</small>
+                            </div>
                         </div>
                     </div>
                 `;
