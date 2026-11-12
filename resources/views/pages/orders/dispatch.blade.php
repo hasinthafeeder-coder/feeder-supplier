@@ -74,7 +74,7 @@
                 </div>
             </div>
 
-            <div class="p-20">
+            <div>
                 <div class="table-responsive">
                     <table class="table align-middle orders-table" id="dispatchOrdersTable">
                         <thead>

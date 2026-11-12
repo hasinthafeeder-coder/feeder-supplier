@@ -8,6 +8,7 @@
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
     const listUrl = page.dataset.listUrl;
     const printDataUrl = page.dataset.printDataUrl || '';
+    const warrantyPrintDataUrl = page.dataset.warrantyPrintDataUrl || '';
     const sendToPackingUrl = page.dataset.sendToPackingUrl || '';
     const canPrint = page.dataset.canPrint === '1';
     const canSendToPacking = page.dataset.canSendToPacking === '1';
@@ -21,10 +22,12 @@
     const filterForm = document.getElementById('printOrdersFilterForm');
     const productSelect = document.getElementById('printFilterProduct');
     const courierSelect = document.getElementById('printFilterCourier');
+    const warrantyFilter = document.getElementById('printFilterWarranty');
     const selectAll = document.getElementById('printOrdersSelectAll');
     const selectedCountEl = document.getElementById('printOrdersSelectedCount');
     const printSelectedBtn = document.getElementById('printSelectedBtn');
     const printItemListBtn = document.getElementById('printItemListBtn');
+    const printWarrantyCardBtn = document.getElementById('printWarrantyCardBtn');
     const sendToPackingBtn = document.getElementById('sendToPackingBtn');
     const clearFiltersBtn = document.getElementById('printOrdersClearFilters');
     const resetFiltersBtn = document.getElementById('printOrdersResetFilters');
@@ -44,6 +47,7 @@
             search: '',
             product_id: '',
             courier_id: '',
+            has_warranty: '',
         },
         selectedIds: new Set(),
         selectedOrders: new Map(),
@@ -106,6 +110,7 @@
             search: (formData.get('search') || '').toString().trim(),
             product_id: (formData.get('product_id') || '').toString(),
             courier_id: (formData.get('courier_id') || '').toString(),
+            has_warranty: warrantyFilter && warrantyFilter.checked ? '1' : '',
         };
     }
 
@@ -323,6 +328,21 @@
         return true;
     }
 
+    function selectedOrdersHaveWarranty() {
+        if (state.selectedIds.size === 0) {
+            return false;
+        }
+
+        for (const id of state.selectedIds) {
+            const order = state.selectedOrders.get(String(id)) || state.ordersById[String(id)];
+            if (order && order.has_warranty) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     function syncSelectionUi() {
         const count = state.selectedIds.size;
         const canSendPrintedSelection = count > 0 && selectedOrdersAreAllPrinted();
@@ -333,6 +353,14 @@
 
         if (printSelectedBtn) {
             printSelectedBtn.disabled = count === 0 || state.submitting;
+        }
+
+        if (printWarrantyCardBtn) {
+            const canPrintWarranty = count > 0 && selectedOrdersHaveWarranty();
+            printWarrantyCardBtn.disabled = !canPrintWarranty || state.submitting;
+            printWarrantyCardBtn.title = canPrintWarranty || count === 0
+                ? ''
+                : 'Select orders that include warranty-enabled products.';
         }
 
         if (sendToPackingBtn) {
@@ -390,14 +418,28 @@
                     </td>`
                 : '';
 
+            const printReady = order.is_print_ready !== false;
+            const warrantyBtn = order.has_warranty
+                ? `<a href="javascript:void(0)"
+                        class="print-action-link print-warranty-single-btn"
+                        data-order-id="${escapeHtml(id)}"
+                        role="button">
+                        Print Warranty Card
+                    </a>`
+                : '';
+
             const actionCell = canPrint
                 ? `<td class="text-end">
-                        <button type="button"
-                            class="btn btn-sm btn-outline-primary print-single-btn"
-                            data-order-id="${escapeHtml(id)}"
-                            ${order.is_print_ready === false ? 'disabled title="Order is not print-ready"' : ''}>
-                            Print
-                        </button>
+                        <div class="d-inline-flex flex-wrap justify-content-end gap-2">
+                            <a href="javascript:void(0)"
+                                class="print-action-link print-single-btn${printReady ? '' : ' is-disabled'}"
+                                data-order-id="${escapeHtml(id)}"
+                                role="button"
+                                ${printReady ? '' : 'aria-disabled="true" title="Order is not print-ready" tabindex="-1"'}>
+                                Print
+                            </a>
+                            ${warrantyBtn}
+                        </div>
                     </td>`
                 : '';
 
@@ -633,12 +675,12 @@
                 <button type="button" class="btn btn-primary btn-sm text-white" id="supplierInvoicePrintAgainBtn">Print</button>
                 <button type="button" class="btn btn-light border btn-sm" id="supplierInvoicePrintCloseBtn">Close</button>
             </div>
-            <div class="supplier-invoice-print-documents${pageSize === 'A4' ? ' is-a4' : ''}">
+            <div class="supplier-invoice-print-documents${pageSize === 'A4' ? ' is-a4' : ''}${pageSize === 'A6' ? ' is-a6' : ''}">
                 ${bodyHtml}
             </div>
         `;
 
-        const pageCount = surface.querySelectorAll('.invoice-page').length;
+        const pageCount = surface.querySelectorAll('.invoice-page, .warranty-page').length;
         const countEl = document.getElementById('supplierInvoicePrintCount');
         if (countEl) {
             if (countLabel) {
@@ -682,8 +724,74 @@
 
     function buildPrintDocumentHtml(title, bodyHtml, options = {}) {
         const pageSize = options.pageSize || 'A5';
-        const pageMargin = pageSize === 'A4' ? '12mm' : '5mm';
-        const bodyFontSize = pageSize === 'A4' ? '14px' : '10px';
+        const pageMargin = pageSize === 'A4' ? '12mm' : (pageSize === 'A6' ? '8mm' : '5mm');
+        const bodyFontSize = pageSize === 'A4' ? '14px' : (pageSize === 'A6' ? '11px' : '10px');
+        const warrantyCss = pageSize === 'A6' ? `
+        .warranty-page {
+            page-break-after: always;
+            break-after: page;
+            break-inside: avoid;
+            page-break-inside: avoid;
+            width: 105mm;
+            min-height: 148mm;
+            padding: 0;
+            margin: 0;
+            color: #111;
+            font-family: Georgia, 'Times New Roman', Times, serif;
+        }
+        .warranty-page:last-child {
+            page-break-after: auto;
+            break-after: auto;
+        }
+        .warranty-card {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 132mm;
+            border: 1px solid #222;
+            padding: 8mm 7mm;
+        }
+        .warranty-title {
+            text-align: center;
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin: 0 0 6mm;
+        }
+        .warranty-meta {
+            margin: 0 0 5mm;
+            font-size: 11px;
+            line-height: 1.55;
+        }
+        .warranty-meta div { margin: 0 0 1.5mm; }
+        .warranty-product {
+            text-align: center;
+            margin: 4mm 0 5mm;
+        }
+        .warranty-product-name {
+            font-size: 15px;
+            font-weight: 700;
+            margin: 0 0 2mm;
+            word-break: break-word;
+        }
+        .warranty-period {
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .warranty-coverage {
+            font-size: 10.5px;
+            line-height: 1.45;
+            margin: 0 0 6mm;
+            text-align: justify;
+        }
+        .warranty-phone {
+            text-align: center;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+        }
+        ` : '';
 
         return `<!DOCTYPE html>
 <html lang="en">
@@ -714,6 +822,7 @@
             page-break-after: auto;
             break-after: auto;
         }
+        ${warrantyCss}
         .inv-header {
             display: flex;
             justify-content: space-between;
@@ -1465,6 +1574,131 @@ ${bodyHtml}
         }
     }
 
+    function renderWarrantyDocuments(certificates) {
+        return (certificates || []).map((certificate) => {
+            const phone = (certificate.supplier_company_phone || '').toString().trim();
+
+            return `
+                <section class="warranty-page">
+                    <div class="warranty-card">
+                        <div>
+                            <h1 class="warranty-title">Warranty Certificate</h1>
+                            <div class="warranty-meta">
+                                <div><strong>Issued Date:</strong> ${escapeHtml(certificate.issued_date || '—')}</div>
+                                <div><strong>Invoice Number:</strong> ${escapeHtml(certificate.invoice_number || '—')}</div>
+                                <div><strong>Customer Name:</strong> ${escapeHtml(certificate.customer_name || '—')}</div>
+                            </div>
+                            <div class="warranty-product">
+                                <div class="warranty-product-name">${escapeHtml(certificate.product_name || '—')}</div>
+                                <div class="warranty-period">(${escapeHtml(certificate.warranty_period || '—')})</div>
+                            </div>
+                            <p class="warranty-coverage">
+                                <strong>Coverage Period:</strong>
+                                ${escapeHtml(certificate.coverage_statement || 'Your product is covered against manufacturing defects for the specific period listed on your warranty card, starting from the original date of purchase.')}
+                            </p>
+                        </div>
+                        <div class="warranty-phone">${escapeHtml(phone || '—')}</div>
+                    </div>
+                </section>
+            `;
+        }).join('');
+    }
+
+    function collectSelectedWarrantyOrderIds() {
+        return collectSelectedOrderIds().filter((id) => {
+            const order = state.selectedOrders.get(String(id)) || state.ordersById[String(id)];
+            return !!(order && order.has_warranty);
+        });
+    }
+
+    async function prepareAndPrintWarranty(orderIds) {
+        if (!canPrint || !warrantyPrintDataUrl || state.submitting) {
+            return;
+        }
+
+        const uniqueIds = Array.from(new Set(
+            (orderIds || [])
+                .map((id) => parseInt(id, 10))
+                .filter((id) => Number.isInteger(id) && id > 0)
+        ));
+
+        if (!uniqueIds.length) {
+            showAlert('warning', 'Select at least one warranty-enabled order.');
+            return;
+        }
+
+        if (uniqueIds.length > maxBatch) {
+            showAlert('warning', `You can print a maximum of ${maxBatch} orders at once.`);
+            return;
+        }
+
+        state.submitting = true;
+        syncSelectionUi();
+
+        if (printWarrantyCardBtn) {
+            printWarrantyCardBtn.disabled = true;
+            printWarrantyCardBtn.textContent = 'Preparing...';
+        }
+
+        try {
+            const response = await fetch(warrantyPrintDataUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': csrfToken,
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({ order_ids: uniqueIds }),
+            });
+
+            const payload = await response.json().catch(() => ({}));
+
+            if (!response.ok) {
+                const detail = payload.message
+                    || (payload.errors && typeof payload.errors === 'object'
+                        ? Object.values(payload.errors).flat().join(' ')
+                        : null)
+                    || 'Unable to prepare warranty certificates.';
+                throw new Error(detail);
+            }
+
+            const certificates = Array.isArray(payload.data) ? payload.data : [];
+            if (!certificates.length) {
+                throw new Error('No warranty certificates were available for the selected orders.');
+            }
+
+            showPrintSurface(
+                certificates.length === 1
+                    ? 'Warranty Certificate'
+                    : `Warranty Certificates (${certificates.length})`,
+                renderWarrantyDocuments(certificates),
+                true,
+                {
+                    pageSize: 'A6',
+                    countLabel: certificates.length === 1
+                        ? '1 warranty card'
+                        : `${certificates.length} warranty cards`,
+                }
+            );
+
+            showAlert(
+                'success',
+                payload.message || `Prepared ${certificates.length} warranty card(s) for printing.`
+            );
+        } catch (error) {
+            closePrintSurface();
+            showAlert('error', error.message || 'Unable to prepare warranty certificates.');
+        } finally {
+            state.submitting = false;
+            if (printWarrantyCardBtn) {
+                printWarrantyCardBtn.textContent = 'Print Warranty Card';
+            }
+            syncSelectionUi();
+        }
+    }
+
     function variantKey(item) {
         if (item.product_variant_id) {
             return `v:${item.product_variant_id}`;
@@ -1705,10 +1939,14 @@ ${bodyHtml}
         if (filterForm) {
             filterForm.reset();
         }
+        if (warrantyFilter) {
+            warrantyFilter.checked = false;
+        }
         state.filters = {
             search: '',
             product_id: '',
             courier_id: '',
+            has_warranty: '',
         };
         state.page = 1;
         loadOrders();
@@ -1782,18 +2020,32 @@ ${bodyHtml}
     });
 
     tableBody.addEventListener('click', function (event) {
-        const button = event.target.closest('.print-single-btn');
-        if (!button || button.disabled) {
+        const actionLink = event.target.closest('.print-action-link');
+        if (!actionLink) {
             return;
         }
 
-        const orderId = parseInt(button.dataset.orderId, 10);
+        event.preventDefault();
+        event.stopPropagation();
+
+        if (actionLink.getAttribute('aria-disabled') === 'true' || actionLink.classList.contains('is-disabled')) {
+            return;
+        }
+
+        const orderId = parseInt(actionLink.dataset.orderId, 10);
         if (!orderId) {
             return;
         }
 
-        // Row action is already disabled when not print-ready.
-        prepareAndPrint([orderId], { skipReadyCheck: true });
+        if (actionLink.classList.contains('print-warranty-single-btn')) {
+            prepareAndPrintWarranty([orderId]);
+            return;
+        }
+
+        if (actionLink.classList.contains('print-single-btn')) {
+            // Row action is already disabled when not print-ready.
+            prepareAndPrint([orderId], { skipReadyCheck: true });
+        }
     });
 
     if (paginationHost) {
@@ -1818,6 +2070,22 @@ ${bodyHtml}
             event.preventDefault();
             event.stopPropagation();
             prepareAndPrint(collectSelectedOrderIds());
+        });
+    }
+
+    if (printWarrantyCardBtn) {
+        printWarrantyCardBtn.addEventListener('click', function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            prepareAndPrintWarranty(collectSelectedWarrantyOrderIds());
+        });
+    }
+
+    if (warrantyFilter) {
+        warrantyFilter.addEventListener('change', function () {
+            readFiltersFromForm();
+            state.page = 1;
+            loadOrders();
         });
     }
 

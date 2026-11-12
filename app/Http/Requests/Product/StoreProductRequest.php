@@ -8,6 +8,8 @@ namespace App\Http\Requests\Product;
 
 use Feeder\Core\Support\CommercialIdentifier;
 
+use Feeder\Core\Support\YouTubeUrl;
+
 use Feeder\Core\Http\Requests\Concerns\ValidatesProductDescriptions;
 
 use Feeder\Core\Models\Market;
@@ -115,6 +117,12 @@ class StoreProductRequest extends FormRequest
 
 
 
+        $warrantyAvailable = $this->boolean('warranty_available');
+
+        $youtubeUrl = trim((string) $this->input('youtube_url', ''));
+
+        $warrantyPeriod = trim((string) $this->input('warranty_period', ''));
+
         $this->merge([
 
             'system_visible' => $this->boolean('system_visible'),
@@ -122,6 +130,14 @@ class StoreProductRequest extends FormRequest
             'web_visible' => $this->boolean('web_visible'),
 
             'price_locked' => $priceLocked,
+
+            'warranty_available' => $warrantyAvailable,
+
+            'youtube_url' => $youtubeUrl !== '' ? $youtubeUrl : null,
+
+            'warranty_period' => $warrantyAvailable && $warrantyPeriod !== ''
+                ? $warrantyPeriod
+                : null,
 
             'variants' => is_array($variants) ? $variants : [],
 
@@ -160,6 +176,31 @@ class StoreProductRequest extends FormRequest
             'web_visible' => ['nullable', 'boolean'],
 
             'price_locked' => ['nullable', 'boolean'],
+
+            'youtube_url' => [
+                'nullable',
+                'string',
+                'max:500',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if ($value === null || $value === '') {
+                        return;
+                    }
+
+                    if (! YouTubeUrl::isValid(is_string($value) ? $value : null)) {
+                        $fail('Enter a valid YouTube video URL (watch, youtu.be, shorts, or embed).');
+                    }
+                },
+            ],
+
+            'warranty_available' => ['nullable', 'boolean'],
+
+            'warranty_period' => [
+                'nullable',
+                'required_if:warranty_available,1',
+                'required_if:warranty_available,true',
+                'string',
+                'max:100',
+            ],
 
             'variants' => ['required', 'array', 'min:1'],
 
@@ -237,7 +278,14 @@ class StoreProductRequest extends FormRequest
 
             $this->assertSubmittedDescriptionsMatchMarket($this->resolvedProductMarket());
 
-
+            if ($this->boolean('warranty_available')
+                && trim((string) $this->input('warranty_period', '')) === ''
+            ) {
+                $validator->errors()->add(
+                    'warranty_period',
+                    'Warranty period is required when warranty is available.'
+                );
+            }
 
             $priceLocked = $this->boolean('price_locked');
 
@@ -305,13 +353,15 @@ class StoreProductRequest extends FormRequest
 
 
 
-                        if ($existing && $this->submittedPriceWasTampered(
-
-                            $variant['suggested_price'] ?? null,
-
-                            $existing->suggested_price
-
-                        )) {
+                        // Disabled/omitted suggested_price inputs are not tampering.
+                        if (
+                            $existing
+                            && $this->priceFieldWasSubmitted($variant, 'suggested_price')
+                            && $this->submittedPriceWasTampered(
+                                $variant['suggested_price'],
+                                $existing->suggested_price
+                            )
+                        ) {
 
                             $validator->errors()->add(
 
@@ -361,13 +411,17 @@ class StoreProductRequest extends FormRequest
 
 
 
-                        if ($existing && $this->submittedPriceWasTampered(
-
-                            $variant['selling_price'] ?? null,
-
-                            $existing->selling_price
-
-                        )) {
+                        // When Price Lock is off the selling-price input is disabled and
+                        // browsers omit it. Omission must preserve the stored price, not
+                        // fail validation as a supplier tamper attempt.
+                        if (
+                            $existing
+                            && $this->priceFieldWasSubmitted($variant, 'selling_price')
+                            && $this->submittedPriceWasTampered(
+                                $variant['selling_price'],
+                                $existing->selling_price
+                            )
+                        ) {
 
                             $validator->errors()->add(
 
@@ -390,6 +444,20 @@ class StoreProductRequest extends FormRequest
     }
 
 
+
+    /**
+     * @param  array<string, mixed>  $variant
+     */
+    private function priceFieldWasSubmitted(array $variant, string $field): bool
+    {
+        if (! array_key_exists($field, $variant)) {
+            return false;
+        }
+
+        $value = $variant[$field];
+
+        return $value !== null && $value !== '';
+    }
 
     private function submittedPriceWasTampered(mixed $submitted, mixed $stored): bool
 

@@ -76,6 +76,15 @@
                 <strong>Rejected by admin.</strong> {{ $product->rejection_reason }}
                 <div class="small mt-1">Edit the product and submit it again for review.</div>
             </div>
+        @elseif ($approvalStatus === \Feeder\Core\Enums\ProductApprovalStatus::APPROVED && filled($product?->rejection_reason) && ! $product->hasPendingEditChanges())
+            <div class="alert alert-danger" role="alert">
+                <strong>Latest edit rejected by admin.</strong> {{ $product->rejection_reason }}
+                <div class="small mt-1">The live approved product is unchanged. Edit and resubmit for review.</div>
+            </div>
+        @elseif ($approvalStatus === \Feeder\Core\Enums\ProductApprovalStatus::PENDING_REVIEW && $product?->hasPendingEditChanges())
+            <div class="alert alert-warning" role="alert">
+                Product edits are pending admin review. The live approved product remains available to resellers.
+            </div>
         @elseif ($approvalStatus === \Feeder\Core\Enums\ProductApprovalStatus::PENDING_REVIEW)
             <div class="alert alert-warning" role="alert">
                 This product is pending admin review and is not available to resellers yet.

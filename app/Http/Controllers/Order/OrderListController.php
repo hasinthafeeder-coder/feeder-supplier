@@ -72,18 +72,22 @@ class OrderListController extends Controller
      *     courier_id: int|null,
      *     date_from: string|null,
      *     date_to: string|null,
+     *     has_warranty: bool|null,
      *     page: int,
      *     per_page: int
      * }
      */
     private function filters(Request $request): array
     {
+        $hasWarranty = $request->input('has_warranty');
+
         return [
             'search' => trim((string) $request->input('search', '')),
             'product_id' => $request->filled('product_id') ? (int) $request->input('product_id') : null,
             'courier_id' => $request->filled('courier_id') ? (int) $request->input('courier_id') : null,
             'date_from' => $request->filled('date_from') ? (string) $request->input('date_from') : null,
             'date_to' => $request->filled('date_to') ? (string) $request->input('date_to') : null,
+            'has_warranty' => in_array($hasWarranty, [1, '1', true, 'true', 'on'], true) ? true : null,
             'page' => max(1, (int) $request->input('page', 1)),
             'per_page' => max(1, min(100, (int) $request->input('per_page', 25))),
         ];

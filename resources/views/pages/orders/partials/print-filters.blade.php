@@ -19,20 +19,29 @@
                 <button type="button" class="btn btn-light border" id="printOrdersClearFilters">Clear</button>
             </div>
 
-            <div class="advanced-filters is-compact" aria-label="Print order filters">
-                <div>
+            <div class="advanced-filters print-orders-filters" aria-label="Print order filters">
+                <div class="print-orders-filter-field">
                     <label class="label" for="printFilterCourier">Courier</label>
                     <select class="form-select form-control" id="printFilterCourier" name="courier_id">
                         <option value="">All couriers</option>
                     </select>
                 </div>
-                <div>
+                <div class="print-orders-filter-field">
                     <label class="label" for="printFilterProduct">Product</label>
                     <select class="form-select form-control" id="printFilterProduct" name="product_id">
                         <option value="">All products</option>
                     </select>
                 </div>
-                <div class="d-flex align-items-end">
+                <div class="print-orders-filter-field print-orders-filter-warranty d-flex align-items-end">
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" value="1" id="printFilterWarranty"
+                            name="has_warranty">
+                        <label class="form-check-label" for="printFilterWarranty">
+                            Warranty products only
+                        </label>
+                    </div>
+                </div>
+                <div class="print-orders-filter-field print-orders-filter-reset d-flex align-items-end">
                     <button type="button" class="btn btn-light border w-100" id="printOrdersResetFilters">Reset filters</button>
                 </div>
             </div>
@@ -50,6 +59,9 @@
             @if ($canPrint)
                 <button type="button" class="btn btn-light border btn-sm" id="printItemListBtn">
                     Print Item List
+                </button>
+                <button type="button" class="btn btn-light border btn-sm" id="printWarrantyCardBtn" disabled>
+                    Print Warranty Card
                 </button>
                 <button type="button" class="btn btn-primary btn-sm text-white" id="printSelectedBtn" disabled>
                     Print Selected

@@ -259,7 +259,6 @@
         pendingTableBody.innerHTML = pendingCouriers.map((courier) => {
             const pendingCount = Number(courier.pending_count || 0);
             const canCreate = pendingCount > 0;
-            const disabledAttr = canCreate ? '' : 'disabled';
             const title = canCreate
                 ? 'Preview dispatched orders awaiting handover and create a Dispatch Note.'
                 : 'No orders awaiting handover for this courier';
@@ -275,25 +274,50 @@
                     </td>
                     <td>${escapeHtml(courier.last_dispatch || '—')}</td>
                     <td class="text-end">
-                        <button
-                            type="button"
-                            class="btn btn-sm btn-primary text-white dispatch-summary-create-btn"
+                        <a href="javascript:void(0)"
+                            class="print-action-link dispatch-summary-create-btn${canCreate ? '' : ' is-disabled'}"
                             data-courier-id="${escapeHtml(courier.id || '')}"
-                            ${disabledAttr}
+                            role="button"
+                            ${canCreate ? '' : 'aria-disabled="true" tabindex="-1"'}
                             title="${escapeHtml(title)}"
                         >
                             Create Dispatch Note
-                        </button>
+                        </a>
                     </td>
                 </tr>
             `;
         }).join('');
     }
 
+    function disposeHistoryActionTooltips() {
+        if (!window.bootstrap || typeof bootstrap.Tooltip !== 'function' || !historyTableBody) {
+            return;
+        }
+
+        historyTableBody.querySelectorAll('[data-bs-toggle="tooltip"]').forEach((el) => {
+            const instance = bootstrap.Tooltip.getInstance(el);
+            if (instance) {
+                instance.dispose();
+            }
+        });
+    }
+
+    function initHistoryActionTooltips() {
+        if (!window.bootstrap || typeof bootstrap.Tooltip !== 'function' || !historyTableBody) {
+            return;
+        }
+
+        historyTableBody.querySelectorAll('[data-bs-toggle="tooltip"]').forEach((el) => {
+            bootstrap.Tooltip.getOrCreateInstance(el);
+        });
+    }
+
     function renderHistoryRows(notes) {
         if (!historyTableBody) {
             return;
         }
+
+        disposeHistoryActionTooltips();
 
         if (!notes.length) {
             historyTableBody.innerHTML = `
@@ -322,27 +346,32 @@
                     <td>${escapeHtml(note.operator || '—')}</td>
                     <td class="text-end">${formatCod(note.total_cod, note.currency_code)}</td>
                     <td class="text-end">
-                        <div class="d-inline-flex gap-1 flex-wrap justify-content-end">
+                        <div class="d-flex justify-content-end" style="gap: 12px;">
                             <button
                                 type="button"
-                                class="btn btn-sm btn-light border dispatch-summary-view-btn"
+                                class="bg-transparent p-0 border-0 dispatch-summary-view-btn"
+                                data-bs-toggle="tooltip"
+                                data-bs-placement="top"
+                                data-bs-title="View Dispatch Note"
                                 data-dispatch-no="${escapeHtml(note.dispatch_no || '')}"
                             >
-                                View
+                                <i class="material-symbols-outlined fs-16 fw-normal text-primary">visibility</i>
                             </button>
-                            <button
-                                type="button"
-                                class="btn btn-sm btn-light border dispatch-summary-print-row-btn"
+                            <a href="javascript:void(0)"
+                                class="print-action-link dispatch-summary-print-row-btn"
+                                role="button"
                                 data-dispatch-no="${escapeHtml(note.dispatch_no || '')}"
                                 title="Print Dispatch Note"
                             >
                                 Print
-                            </button>
+                            </a>
                         </div>
                     </td>
                 </tr>
             `;
         }).join('');
+
+        initHistoryActionTooltips();
     }
 
     function renderPagination(total, currentPage, perPage) {
@@ -576,9 +605,15 @@
     if (pendingTableBody) {
         pendingTableBody.addEventListener('click', (event) => {
             const createBtn = event.target.closest('.dispatch-summary-create-btn');
-            if (!createBtn || createBtn.disabled) {
+            if (!createBtn) {
                 return;
             }
+
+            event.preventDefault();
+            if (createBtn.getAttribute('aria-disabled') === 'true' || createBtn.classList.contains('is-disabled')) {
+                return;
+            }
+
             const courier = findCourier(createBtn.dataset.courierId || '');
             if (!courier) {
                 return;
@@ -600,6 +635,7 @@
 
             const printRowBtn = event.target.closest('.dispatch-summary-print-row-btn');
             if (printRowBtn) {
+                event.preventDefault();
                 const note = findHistoryNote(printRowBtn.dataset.dispatchNo || '');
                 if (note) {
                     openPrintWindow(note);

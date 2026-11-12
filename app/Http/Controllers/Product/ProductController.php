@@ -15,8 +15,10 @@ use Feeder\Core\Services\MarketDefaultCompanyCommissionService;
 use Feeder\Core\Services\ProductApprovalService;
 use Feeder\Core\Services\ProductMarketLanguageService;
 use Feeder\Core\Services\ProductService;
+use Feeder\Core\Support\YouTubeUrl;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class ProductController extends Controller
@@ -81,6 +83,11 @@ class ProductController extends Controller
                 'system_visible' => $request->boolean('system_visible'),
                 'web_visible' => $request->boolean('web_visible'),
                 'price_locked' => $request->boolean('price_locked'),
+                'youtube_url' => YouTubeUrl::normalise($request->input('youtube_url')),
+                'warranty_available' => $request->boolean('warranty_available'),
+                'warranty_period' => $request->boolean('warranty_available')
+                    ? trim((string) $request->input('warranty_period'))
+                    : null,
                 'created_by' => $supplierId,
                 'updated_by' => $supplierId,
             ],
@@ -148,6 +155,51 @@ class ProductController extends Controller
 
         $supplierId = (int) Auth::id();
         $action = (string) $request->input('save_action', 'draft');
+
+        if ($product->hasPendingEditChanges()) {
+            throw ValidationException::withMessages([
+                'product' => ['This product already has changes pending admin review. Wait for a decision before submitting again.'],
+            ]);
+        }
+
+        $attributes = [
+            'category_id' => $request->input('category_id'),
+            'name' => $request->input('name'),
+            'system_visible' => $request->boolean('system_visible'),
+            'web_visible' => $request->boolean('web_visible'),
+            'price_locked' => $request->boolean('price_locked'),
+            'youtube_url' => YouTubeUrl::normalise($request->input('youtube_url')),
+            'warranty_available' => $request->boolean('warranty_available'),
+            'warranty_period' => $request->boolean('warranty_available')
+                ? trim((string) $request->input('warranty_period'))
+                : null,
+            'updated_by' => $supplierId,
+        ];
+        $descriptions = $this->extractDescriptions($request);
+        $variants = $this->extractVariants($request);
+        $images = $this->uploadImages($request);
+        $guideline = $request->hasFile('guideline') ? $this->uploadGuideline($request) : null;
+
+        // Explicit APPROVED products: park content edits for admin review and keep
+        // the live approved catalog unchanged. Legacy ACTIVE + null is untouched here.
+        if ($product->requiresEditApproval()) {
+            $this->productApprovalService->submitEditForReview(
+                $product,
+                [
+                    'attributes' => $attributes,
+                    'descriptions' => $descriptions,
+                    'variants' => $variants,
+                    'images' => $images,
+                    'guideline' => $guideline,
+                ],
+                $supplierId,
+            );
+
+            return redirect()
+                ->route('products.index')
+                ->with('success', 'Product changes submitted for admin review. The live product stays unchanged until approved.');
+        }
+
         $isApproved = $product->isApprovalApproved();
         $wantsLive = in_array($action, ['publish', 'activate'], true);
         $submitForReview = $wantsLive && ! $isApproved;
@@ -163,18 +215,13 @@ class ProductController extends Controller
         $this->productService->updateProduct(
             $product,
             [
-                'category_id' => $request->input('category_id'),
-                'name' => $request->input('name'),
+                ...$attributes,
                 'status' => $status,
-                'system_visible' => $request->boolean('system_visible'),
-                'web_visible' => $request->boolean('web_visible'),
-                'price_locked' => $request->boolean('price_locked'),
-                'updated_by' => $supplierId,
             ],
-            $this->extractDescriptions($request),
-            $this->extractVariants($request),
-            $this->uploadImages($request),
-            $request->hasFile('guideline') ? $this->uploadGuideline($request) : null,
+            $descriptions,
+            $variants,
+            $images,
+            $guideline,
             lockAdminFinancialFields: true,
         );
 

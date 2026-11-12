@@ -70,11 +70,25 @@
             @endforeach
         </ul>
     @elseif ($item->getRoute() && Route::has($item->getRoute()))
-        <a href="{{ route($item->getRoute()) }}" class="menu-link {{ $isActive ? 'active' : '' }}">
+        @php
+            $badge = $item->getBadge(auth()->user());
+            $liveBadgeKey = match ($item->getTitle()) {
+                'Notification Inbox' => 'notifications',
+                default => null,
+            };
+        @endphp
+        <a href="{{ route($item->getRoute()) }}"
+            class="menu-link {{ $isActive ? 'active' : '' }}"
+            @if ($liveBadgeKey) data-notification-live-menu="{{ $liveBadgeKey }}" @endif>
             @if ($item->getIcon())
                 <span class="material-symbols-outlined menu-icon">{{ $item->getIcon() }}</span>
             @endif
             <span class="title">{{ $item->getTitle() }}</span>
+            <span class="count"
+                @if ($liveBadgeKey) data-notification-live-badge="{{ $liveBadgeKey }}" @endif
+                @if ($badge === null) hidden style="display:none;" @endif>
+                {{ $badge ?? '' }}
+            </span>
         </a>
     @endif
 </li>

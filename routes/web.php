@@ -1,6 +1,9 @@
 <?php
 
 use App\Http\Controllers\Finance\FinancialOverviewController;
+use App\Http\Controllers\Notification\NotificationController;
+use App\Http\Controllers\Notification\NotificationInboxController;
+use App\Http\Controllers\Notification\NotificationLiveController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
@@ -114,6 +117,54 @@ Route::middleware('auth')->group(function () {
     Route::get('/finance/overview/batches/{batch}', [FinancialOverviewController::class, 'showBatch'])
         ->middleware('permission:dashboard.view')
         ->name('finance.batches.show');
+
+    Route::prefix('notifications')
+        ->name('notifications.')
+        ->group(function () {
+            Route::get('/live', NotificationLiveController::class)
+                ->middleware('permission:notifications.view')
+                ->name('live');
+
+            Route::prefix('inbox')
+                ->name('inbox.')
+                ->middleware('permission:notifications.view')
+                ->group(function () {
+                    Route::get('/', [NotificationInboxController::class, 'index'])
+                        ->name('index');
+
+                    Route::get('/{notification}', [NotificationInboxController::class, 'show'])
+                        ->where('notification', '[A-Za-z0-9]+')
+                        ->name('show');
+
+                    Route::post('/{notification}/read', [NotificationInboxController::class, 'markRead'])
+                        ->where('notification', '[A-Za-z0-9]+')
+                        ->name('read');
+                });
+
+            Route::get('/', [NotificationController::class, 'index'])
+                ->middleware('permission:notifications.view')
+                ->name('index');
+
+            Route::get('/create', [NotificationController::class, 'create'])
+                ->middleware('permission:notifications.create')
+                ->name('create');
+
+            Route::post('/', [NotificationController::class, 'store'])
+                ->middleware('permission:notifications.create')
+                ->name('store');
+
+            Route::get('/{notification}', [NotificationController::class, 'show'])
+                ->middleware('permission:notifications.view')
+                ->name('show');
+
+            Route::get('/{notification}/edit', [NotificationController::class, 'edit'])
+                ->middleware('permission:notifications.create')
+                ->name('edit');
+
+            Route::put('/{notification}', [NotificationController::class, 'update'])
+                ->middleware('permission:notifications.create')
+                ->name('update');
+        });
 
     require __DIR__.'/orders.php';
 

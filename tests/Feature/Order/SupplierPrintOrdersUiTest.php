@@ -51,6 +51,7 @@ class SupplierPrintOrdersUiTest extends TestCase
             ->assertSee('No orders waiting for printing.', false)
             ->assertSee('data-list-url="'.route('orders.print.index').'"', false)
             ->assertSee('data-print-data-url="'.route('orders.print-data').'"', false)
+            ->assertSee('data-warranty-print-data-url="'.route('orders.warranty-print-data').'"', false)
             ->assertSee('data-send-to-packing-url="'.route('orders.send-to-packing').'"', false)
             ->assertSee('data-max-batch="'.SupplierFulfillmentBatchService::MAX_BATCH_SIZE.'"', false)
             ->assertSee('(max '.SupplierFulfillmentBatchService::MAX_BATCH_SIZE.')', false)
@@ -60,6 +61,9 @@ class SupplierPrintOrdersUiTest extends TestCase
             ->assertDontSee('>Invoice</th>', false)
             ->assertDontSee('>Fulfillment</th>', false)
             ->assertSee('id="printItemListBtn"', false)
+            ->assertSee('id="printWarrantyCardBtn"', false)
+            ->assertSee('id="printFilterWarranty"', false)
+            ->assertSee('Warranty products only', false)
             ->assertSee('id="sendToPackingBtn"', false)
             ->assertSee('id="printOrdersSelectAll"', false)
             ->assertSee('supplier-code128.js', false)
@@ -69,6 +73,10 @@ class SupplierPrintOrdersUiTest extends TestCase
             ->assertSee('inv-section-title', false)
             ->assertSee('COD AMOUNT', false)
             ->assertSee('Payment Collected', false)
+            ->assertSee('Warranty Certificate', false)
+            ->assertSee("pageSize: 'A6'", false)
+            ->assertSee('warranty-page', false)
+            ->assertSee('105mm', false)
             ->assertDontSee('coming soon', false);
     }
 
@@ -466,5 +474,124 @@ class SupplierPrintOrdersUiTest extends TestCase
         $this->assertArrayHasKey('product_variant_id', $items[0]);
         $this->assertArrayHasKey('barcode', $items[0]);
         $this->assertArrayHasKey('variant', $items[0]);
+    }
+
+    public function test_print_list_can_filter_orders_with_warranty_products(): void
+    {
+        $context = $this->makeConfirmedOrderContext(stockQuantity: 10, orderQuantity: 1);
+        $context['product']->forceFill([
+            'warranty_available' => true,
+            'warranty_period' => '6 Months',
+        ])->save();
+        $warrantyOrder = $this->moveToPrint($context);
+        $this->ensurePrintableShipment($warrantyOrder);
+
+        $plainCatalog = $this->makeSupplierProductVariant($context['supplier']);
+        $this->seedStock(
+            $context['supplier'],
+            $plainCatalog['product']->id,
+            $plainCatalog['variant']->id,
+            5
+        );
+        $plainOrder = $this->createAndConfirmOrder(
+            $context['reseller'],
+            $context['supplier'],
+            $plainCatalog['variant']->id,
+            1
+        );
+        $plainOrder = $this->moveToPrint([
+            'order' => $plainOrder,
+            'supplier' => $context['supplier'],
+            'reseller' => $context['reseller'],
+            'variant' => $plainCatalog['variant'],
+            'product' => $plainCatalog['product'],
+        ]);
+        $this->ensurePrintableShipment($plainOrder);
+
+        $filtered = $this->actingAs($context['supplier'])
+            ->getJson(route('orders.print.index', ['has_warranty' => 1]))
+            ->assertOk();
+
+        $ids = collect($filtered->json('data'))->pluck('id');
+        $this->assertTrue($ids->contains($warrantyOrder->id));
+        $this->assertFalse($ids->contains($plainOrder->id));
+
+        $list = $this->actingAs($context['supplier'])
+            ->getJson(route('orders.print.index'))
+            ->assertOk();
+
+        $warrantyRow = collect($list->json('data'))->firstWhere('id', $warrantyOrder->id);
+        $plainRow = collect($list->json('data'))->firstWhere('id', $plainOrder->id);
+
+        $this->assertTrue((bool) ($warrantyRow['has_warranty'] ?? false));
+        $this->assertFalse((bool) ($plainRow['has_warranty'] ?? true));
+    }
+
+    public function test_warranty_print_data_returns_certificate_fields_without_changing_print_status(): void
+    {
+        $context = $this->makeConfirmedOrderContext(stockQuantity: 5, orderQuantity: 2);
+        $phone = '077'.random_int(1000000, 9999999);
+        $context['supplier']->company->forceFill(['phone' => $phone])->save();
+        $context['product']->forceFill([
+            'warranty_available' => true,
+            'warranty_period' => '6 Months',
+        ])->save();
+
+        $order = $this->moveToPrint($context);
+        $this->ensurePrintableShipment($order);
+        $order = $order->fresh(['fulfillment', 'items', 'supplier.company']);
+        $expectedProductName = $order->items->first()?->product_name_snapshot
+            ?: $context['product']->name;
+
+        $beforePrinted = $this->actingAs($context['supplier'])
+            ->getJson(route('orders.print.index', ['search' => $order->order_number]))
+            ->assertOk()
+            ->json('data.0.is_printed');
+
+        $this->assertFalse((bool) $beforePrinted);
+
+        $payload = $this->actingAs($context['supplier'])
+            ->postJson(route('orders.warranty-print-data'), [
+                'order_ids' => [$order->id],
+            ])
+            ->assertOk()
+            ->json('data.0');
+
+        $this->assertSame($order->id, $payload['order_id']);
+        $this->assertSame($order->order_number, $payload['invoice_number']);
+        $this->assertSame($order->customer_name_snapshot ?? 'API Customer', $payload['customer_name']);
+        $this->assertSame($expectedProductName, $payload['product_name']);
+        $this->assertSame('6 Months', $payload['warranty_period']);
+        $this->assertSame($phone, $payload['supplier_company_phone']);
+        $this->assertNotEmpty($payload['issued_date']);
+        $this->assertStringContainsString(
+            'manufacturing defects',
+            $payload['coverage_statement']
+        );
+
+        $afterPrinted = $this->actingAs($context['supplier'])
+            ->getJson(route('orders.print.index', ['search' => $order->order_number]))
+            ->assertOk()
+            ->json('data.0.is_printed');
+
+        $this->assertFalse((bool) $afterPrinted);
+        $this->assertSame(
+            SupplierFulfillmentStatus::PRINT->value,
+            $order->fresh('fulfillment')->fulfillment->status->value
+        );
+    }
+
+    public function test_warranty_print_data_rejects_orders_without_warranty_products(): void
+    {
+        $context = $this->makeConfirmedOrderContext(stockQuantity: 5, orderQuantity: 1);
+        $order = $this->moveToPrint($context);
+        $this->ensurePrintableShipment($order);
+
+        $this->actingAs($context['supplier'])
+            ->postJson(route('orders.warranty-print-data'), [
+                'order_ids' => [$order->id],
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('code', 'ORDER_NOT_PRINTABLE');
     }
 }

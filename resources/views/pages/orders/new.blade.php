@@ -67,15 +67,17 @@
                 </div>
             </div>
 
-            <div class="p-20">
+            <div>
                 <div class="table-responsive">
                     <table class="table align-middle orders-table" id="ordersTable">
                         <thead>
                             <tr>
                                 @if ($canSendToPrint)
                                     <th scope="col" class="orders-select-col order-ui-select-col">
-                                        <input class="form-check-input" type="checkbox" id="ordersSelectAll"
-                                            title="Select All" aria-label="Select All">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="ordersSelectAll"
+                                                title="Select All" aria-label="Select All">
+                                        </div>
                                     </th>
                                 @endif
                                 <th scope="col">Feeder Order ID</th>
@@ -104,7 +106,7 @@
                 <div id="ordersPaginationHost"></div>
 
                 @if ($canSendToPrint)
-                    <div id="ordersCountSendBar" class="pt-15 border-top d-flex flex-wrap align-items-end gap-2">
+                    <div id="ordersCountSendBar" class="p-20 border-top d-flex flex-wrap align-items-end gap-2">
                         <div style="min-width: 140px;">
                             <label class="label" for="ordersSendCountInput">Send count</label>
                             <input

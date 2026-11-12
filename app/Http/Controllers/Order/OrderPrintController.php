@@ -50,4 +50,21 @@ class OrderPrintController extends Controller
             'data' => $payloads,
         ]);
     }
+
+    public function prepareWarranty(PreparePrintDataRequest $request): JsonResponse
+    {
+        try {
+            $payloads = $this->orderApiService->prepareWarrantyCertificateData(
+                (int) Auth::id(),
+                $request->orderIds(),
+            );
+        } catch (SupplierFulfillmentException $exception) {
+            return $exception->toResponse();
+        }
+
+        return response()->json([
+            'message' => 'Warranty certificates ready for printing.',
+            'data' => $payloads,
+        ]);
+    }
 }

@@ -86,6 +86,26 @@
         grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
+    /* Print Orders: Courier | Product | Warranty | Reset on one desktop row */
+    .supplier-orders-ui .advanced-filters.print-orders-filters {
+        grid-template-columns: minmax(0, 1.35fr) minmax(0, 1.35fr) minmax(180px, max-content) minmax(132px, max-content);
+        align-items: end;
+        column-gap: 0.75rem;
+        row-gap: 0.75rem;
+    }
+
+    .supplier-orders-ui .advanced-filters.print-orders-filters .print-orders-filter-warranty .form-check {
+        min-height: 38px;
+        display: flex;
+        align-items: center;
+        padding-top: 0;
+        margin-bottom: 0.125rem;
+    }
+
+    .supplier-orders-ui .advanced-filters.print-orders-filters .print-orders-filter-reset .btn {
+        white-space: nowrap;
+    }
+
     .supplier-orders-ui .advanced-filters .label {
         display: block;
         font-size: 12px;
@@ -129,6 +149,32 @@
         color: #64748b;
     }
 
+    .supplier-orders-ui .print-action-link {
+        color: #ef4923;
+        font-size: 13px;
+        font-weight: 600;
+        line-height: 1.3;
+        text-decoration: none;
+        white-space: nowrap;
+        cursor: pointer;
+    }
+
+    .supplier-orders-ui .print-action-link:hover,
+    .supplier-orders-ui .print-action-link:focus-visible {
+        color: #c53716;
+        font-weight: 700;
+        text-decoration: underline;
+    }
+
+    .supplier-orders-ui .print-action-link.is-disabled,
+    .supplier-orders-ui .print-action-link[aria-disabled="true"] {
+        color: #94a3b8;
+        font-weight: 600;
+        text-decoration: none;
+        cursor: not-allowed;
+        pointer-events: none;
+    }
+
     .supplier-orders-ui .orders-table {
         width: 100%;
         margin: 0;
@@ -140,25 +186,26 @@
         font-weight: 650;
         text-transform: uppercase;
         letter-spacing: 0.03em;
-        color: #64748b;
+        color: #475569;
         white-space: nowrap;
         border-bottom: 1px solid rgba(15, 23, 42, 0.08);
         padding: 0.7rem 0.65rem;
-        background: #fafbfc;
+        background-color: #fde5e0;
     }
 
     .supplier-orders-ui .orders-table tbody td {
         padding: 0.8rem 0.65rem;
         vertical-align: top;
         border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+        background-color: #fff;
     }
 
-    .supplier-orders-ui .orders-table tbody tr:hover {
-        background: #f8fafc;
+    .supplier-orders-ui .orders-table tbody tr:hover td {
+        background-color: #f8fafc;
     }
 
-    .supplier-orders-ui .orders-table tbody tr.is-selected {
-        background: rgba(239, 73, 35, 0.06);
+    .supplier-orders-ui .orders-table tbody tr.is-selected td {
+        background-color: rgba(239, 73, 35, 0.06);
     }
 
     .supplier-orders-ui .order-number {
@@ -477,12 +524,50 @@
         .supplier-orders-ui .advanced-filters.is-compact {
             grid-template-columns: repeat(2, minmax(0, 1fr));
         }
+
+        .supplier-orders-ui .advanced-filters.print-orders-filters {
+            display: flex;
+            flex-wrap: nowrap;
+            align-items: end;
+            gap: 0.75rem;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 0.15rem;
+        }
+
+        .supplier-orders-ui .advanced-filters.print-orders-filters > .print-orders-filter-field {
+            flex: 0 0 auto;
+            min-width: 168px;
+        }
+
+        .supplier-orders-ui .advanced-filters.print-orders-filters > .print-orders-filter-warranty {
+            min-width: 190px;
+        }
+
+        .supplier-orders-ui .advanced-filters.print-orders-filters > .print-orders-filter-reset {
+            min-width: 140px;
+        }
     }
 
     @media (max-width: 575.98px) {
         .supplier-orders-ui .advanced-filters,
         .supplier-orders-ui .advanced-filters.is-compact {
             grid-template-columns: 1fr;
+        }
+
+        .supplier-orders-ui .advanced-filters.print-orders-filters {
+            flex-wrap: wrap;
+            overflow-x: visible;
+        }
+
+        .supplier-orders-ui .advanced-filters.print-orders-filters > .print-orders-filter-field {
+            flex: 1 1 calc(50% - 0.75rem);
+            min-width: 140px;
+        }
+
+        .supplier-orders-ui .advanced-filters.print-orders-filters > .print-orders-filter-warranty,
+        .supplier-orders-ui .advanced-filters.print-orders-filters > .print-orders-filter-reset {
+            flex: 1 1 100%;
         }
     }
 </style>

@@ -378,11 +378,36 @@
         });
     }
 
+    function disposeActionTooltips() {
+        if (!window.bootstrap || typeof bootstrap.Tooltip !== 'function') {
+            return;
+        }
+
+        tableBody.querySelectorAll('[data-bs-toggle="tooltip"]').forEach((el) => {
+            const instance = bootstrap.Tooltip.getInstance(el);
+            if (instance) {
+                instance.dispose();
+            }
+        });
+    }
+
+    function initActionTooltips() {
+        if (!window.bootstrap || typeof bootstrap.Tooltip !== 'function') {
+            return;
+        }
+
+        tableBody.querySelectorAll('[data-bs-toggle="tooltip"]').forEach((el) => {
+            bootstrap.Tooltip.getOrCreateInstance(el);
+        });
+    }
+
     function renderRows(orders) {
         state.ordersById = {};
         orders.forEach((order) => {
             state.ordersById[String(order.id)] = order;
         });
+
+        disposeActionTooltips();
 
         if (!orders.length) {
             tableBody.innerHTML = `
@@ -411,22 +436,29 @@
 
             const showUrl = orderShowUrl(order);
             const viewBtn = showUrl
-                ? `<a href="${escapeHtml(showUrl)}" class="btn btn-sm btn-light border order-view-btn">View Order</a>`
+                ? `<a href="${escapeHtml(showUrl)}"
+                        class="bg-transparent p-0 border-0 text-decoration-none order-view-btn"
+                        data-bs-toggle="tooltip" data-bs-placement="top"
+                        data-bs-title="View Order">
+                        <i class="material-symbols-outlined fs-16 fw-normal text-primary">visibility</i>
+                    </a>`
                 : '';
 
             const cancelBtn = canCancel
                 ? `<button type="button"
-                        class="btn btn-sm btn-outline-danger order-cancel-btn"
+                        class="bg-transparent p-0 border-0 hover-text-danger order-cancel-btn"
                         data-order-id="${escapeHtml(id)}"
                         data-order-uuid="${escapeHtml(uuid)}"
-                        data-order-number="${escapeHtml(order.order_number || '')}">
-                        Cancel
+                        data-order-number="${escapeHtml(order.order_number || '')}"
+                        data-bs-toggle="tooltip" data-bs-placement="top"
+                        data-bs-title="Cancel Order">
+                        <i class="material-symbols-outlined fs-16 fw-normal text-body">block</i>
                     </button>`
                 : '';
 
             const actionCell = `
                 <td class="text-end">
-                    <div class="d-inline-flex flex-wrap gap-1 justify-content-end">
+                    <div class="d-flex justify-content-end" style="gap: 12px;">
                         ${viewBtn}
                         ${cancelBtn}
                     </div>
@@ -457,6 +489,7 @@
 
         pruneSelectionToVisible(orders);
         syncSelectionUi();
+        initActionTooltips();
     }
 
     function renderPagination(meta) {

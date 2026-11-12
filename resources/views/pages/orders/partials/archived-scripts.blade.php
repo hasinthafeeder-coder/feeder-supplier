@@ -186,7 +186,32 @@
         return workspaceOrders.filter(matchesFilters);
     }
 
+    function disposeActionTooltips() {
+        if (!window.bootstrap || typeof bootstrap.Tooltip !== 'function' || !tableBody) {
+            return;
+        }
+
+        tableBody.querySelectorAll('[data-bs-toggle="tooltip"]').forEach((el) => {
+            const instance = bootstrap.Tooltip.getInstance(el);
+            if (instance) {
+                instance.dispose();
+            }
+        });
+    }
+
+    function initActionTooltips() {
+        if (!window.bootstrap || typeof bootstrap.Tooltip !== 'function' || !tableBody) {
+            return;
+        }
+
+        tableBody.querySelectorAll('[data-bs-toggle="tooltip"]').forEach((el) => {
+            bootstrap.Tooltip.getOrCreateInstance(el);
+        });
+    }
+
     function renderRows(orders) {
+        disposeActionTooltips();
+
         if (!orders.length) {
             tableBody.innerHTML = `
                 <tr>
@@ -217,17 +242,23 @@
                     <div class="order-sub">${formatSettlementAmount(order)}</div>
                 </td>
                 <td class="text-end">
-                    <button
-                        type="button"
-                        class="btn btn-sm btn-light border archived-order-view-btn"
-                        title="View archived order"
-                        data-order-number="${escapeHtml(order.order_number || '')}"
-                    >
-                        View
-                    </button>
+                    <div class="d-flex justify-content-end" style="gap: 12px;">
+                        <button
+                            type="button"
+                            class="bg-transparent p-0 border-0 archived-order-view-btn"
+                            data-bs-toggle="tooltip"
+                            data-bs-placement="top"
+                            data-bs-title="View Order"
+                            data-order-number="${escapeHtml(order.order_number || '')}"
+                        >
+                            <i class="material-symbols-outlined fs-16 fw-normal text-primary">visibility</i>
+                        </button>
+                    </div>
                 </td>
             </tr>
         `).join('');
+
+        initActionTooltips();
     }
 
     function renderPagination(total, currentPage, perPage) {

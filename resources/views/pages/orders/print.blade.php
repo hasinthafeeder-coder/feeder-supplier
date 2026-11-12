@@ -19,6 +19,7 @@
         id="supplierPrintOrdersPage"
         data-list-url="{{ route('orders.print.index') }}"
         data-print-data-url="{{ route('orders.print-data') }}"
+        data-warranty-print-data-url="{{ route('orders.warranty-print-data') }}"
         data-send-to-packing-url="{{ route('orders.send-to-packing') }}"
         data-can-print="{{ $canPrint ? '1' : '0' }}"
         data-can-send-to-packing="{{ $canSendToPacking ? '1' : '0' }}"
@@ -49,15 +50,17 @@
                 </div>
             </div>
 
-            <div class="p-20">
+            <div>
                 <div class="table-responsive">
                     <table class="table align-middle orders-table" id="printOrdersTable">
                         <thead>
                             <tr>
                                 @if ($canSelect)
                                     <th scope="col" class="order-ui-select-col">
-                                        <input class="form-check-input" type="checkbox" id="printOrdersSelectAll"
-                                            title="Select All" aria-label="Select All">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="printOrdersSelectAll"
+                                                title="Select All" aria-label="Select All">
+                                        </div>
                                     </th>
                                 @endif
                                 <th scope="col">Feeder Invoice ID</th>

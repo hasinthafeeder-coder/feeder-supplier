@@ -149,6 +149,15 @@
                 <strong>Rejected by admin.</strong> {{ $product->rejection_reason }}
                 <div class="small mt-1">Update the product details and click Submit for Review.</div>
             </div>
+        @elseif ($editApprovalStatus === \Feeder\Core\Enums\ProductApprovalStatus::APPROVED && filled($product?->rejection_reason) && ! $product->hasPendingEditChanges())
+            <div class="alert alert-danger" role="alert">
+                <strong>Latest edit rejected by admin.</strong> {{ $product->rejection_reason }}
+                <div class="small mt-1">The live approved product is unchanged. Correct the details and submit again for review.</div>
+            </div>
+        @elseif ($editApprovalStatus === \Feeder\Core\Enums\ProductApprovalStatus::PENDING_REVIEW && $product?->hasPendingEditChanges())
+            <div class="alert alert-warning" role="alert">
+                Product edits are pending admin review. The live approved product stays available to resellers until the review is decided. Further submissions are blocked until then.
+            </div>
         @elseif ($editApprovalStatus === \Feeder\Core\Enums\ProductApprovalStatus::PENDING_REVIEW)
             <div class="alert alert-warning" role="alert">
                 This product is pending admin review. Saving changes keeps it in the review queue.
@@ -232,6 +241,41 @@
                                     <input type="file" class="form-control" id="productGuideline"
                                         name="guideline" accept="application/pdf">
                                     <small class="text-muted">Guideline / spec sheet</small>
+                                </div>
+                            </div>
+
+                            <div class="col-lg-6">
+                                <div class="form-floating">
+                                    <input type="url" class="form-control" id="youtubeUrl" name="youtube_url"
+                                        placeholder="https://www.youtube.com/watch?v=..."
+                                        value="{{ old('youtube_url', $product?->youtube_url) }}">
+                                    <label for="youtubeUrl">YouTube Video URL (optional)</label>
+                                </div>
+                                <small class="text-muted">Supports youtube.com/watch, youtu.be, shorts, and embed links.</small>
+                                @error('youtube_url')
+                                    <div class="text-danger fs-13 mt-1">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div class="col-lg-6">
+                                <div class="border rounded-10 p-3 bg-light-subtle h-100">
+                                    <div class="form-check form-switch mb-3">
+                                        <input class="form-check-input" type="checkbox" id="warrantyAvailable"
+                                            name="warranty_available" value="1"
+                                            {{ old('warranty_available', $product?->warranty_available ?? false) ? 'checked' : '' }}>
+                                        <label class="form-check-label" for="warrantyAvailable">Warranty Available</label>
+                                    </div>
+                                    <div class="form-floating">
+                                        <input type="text" class="form-control" id="warrantyPeriod"
+                                            name="warranty_period" placeholder="e.g. 6 Months"
+                                            value="{{ old('warranty_period', $product?->warranty_period) }}"
+                                            {{ old('warranty_available', $product?->warranty_available ?? false) ? '' : 'disabled' }}>
+                                        <label for="warrantyPeriod">Warranty Period</label>
+                                    </div>
+                                    <small class="text-muted">Example: 6 Months</small>
+                                    @error('warranty_period')
+                                        <div class="text-danger fs-13 mt-1">{{ $message }}</div>
+                                    @enderror
                                 </div>
                             </div>
 
@@ -331,8 +375,9 @@
                                 && $product->isApprovalApproved();
                         @endphp
                         <button type="submit" name="save_action" value="publish"
-                            class="btn btn-primary text-white">
-                            {{ $isApprovedProduct ? 'Publish Product' : 'Submit for Review' }}
+                            class="btn btn-primary text-white"
+                            @disabled($product?->hasPendingEditChanges())>
+                            {{ $isApprovedProduct ? 'Submit Changes for Review' : 'Submit for Review' }}
                         </button>
                     </div>
                 </div>
@@ -726,9 +771,13 @@
                     suggestedRangeGroup?.classList.remove('d-none');
 
                     if (sellingInput) {
+                        // readonly (not disabled) so the existing selling price is submitted
+                        // and cannot be blanked by a browser-omitted disabled input.
                         sellingInput.readOnly = true;
                         sellingInput.required = false;
-                        sellingInput.disabled = true;
+                        sellingInput.disabled = false;
+                        sellingInput.setAttribute('tabindex', '-1');
+                        sellingInput.classList.add('bg-light');
                     }
 
                     if (suggestedMinInput) {
@@ -814,7 +863,7 @@
                                 <label class="label fs-14 mb-2">Selling Price</label>
                                 <div class="input-group">
                                     <span class="input-group-text">${currencyIsoCode}</span>
-                                    <input type="number" min="0" step="0.01" class="form-control variant-selling-price" name="variants[${variantIndex}][selling_price]" value="${variantSelling}" placeholder="0.00" ${locked ? 'required' : 'disabled'}>
+                                    <input type="number" min="0" step="0.01" class="form-control variant-selling-price" name="variants[${variantIndex}][selling_price]" value="${variantSelling}" placeholder="0.00" ${locked ? 'required' : 'readonly tabindex="-1"'}>
                                 </div>
                             </div>
                             <div class="col-lg-6 variant-suggested-range-group${locked ? ' d-none' : ''}">
@@ -863,6 +912,26 @@
 
             if (priceLockInput) {
                 priceLockInput.addEventListener('change', syncAllVariantPricing);
+            }
+
+            const warrantyAvailableInput = document.getElementById('warrantyAvailable');
+            const warrantyPeriodInput = document.getElementById('warrantyPeriod');
+
+            function syncWarrantyPeriodField() {
+                if (!warrantyPeriodInput) {
+                    return;
+                }
+
+                const enabled = !!(warrantyAvailableInput && warrantyAvailableInput.checked);
+                warrantyPeriodInput.disabled = !enabled;
+                if (!enabled) {
+                    warrantyPeriodInput.value = '';
+                }
+            }
+
+            if (warrantyAvailableInput) {
+                warrantyAvailableInput.addEventListener('change', syncWarrantyPeriodField);
+                syncWarrantyPeriodField();
             }
 
             addVariantBtn.addEventListener('click', createVariant);

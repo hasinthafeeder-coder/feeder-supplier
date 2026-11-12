@@ -133,7 +133,13 @@
                                                 <div class="mt-1 d-flex flex-wrap gap-1">
                                                     <span class="badge {{ $statusBadgeClass }}">{{ $statusValue }}</span>
                                                     <span class="badge {{ $approvalBadgeClass }}">{{ $approvalLabel }}</span>
+                                                    @if ($product->hasPendingEditChanges())
+                                                        <span class="badge bg-warning-subtle text-warning border border-warning border-opacity-10">Edit pending</span>
+                                                    @endif
                                                 </div>
+                                                @if (filled($product->rejection_reason) && ($approvalStatus === \Feeder\Core\Enums\ProductApprovalStatus::REJECTED || ($approvalStatus === \Feeder\Core\Enums\ProductApprovalStatus::APPROVED && ! $product->hasPendingEditChanges())))
+                                                    <div class="mt-1 small text-danger">Rejection: {{ \Illuminate\Support\Str::limit($product->rejection_reason, 120) }}</div>
+                                                @endif
                                                 <div class="mt-1">
                                                     @if ($product->market?->country?->iso_code && $productCurrency)
                                                         <span class="badge bg-light text-body border">

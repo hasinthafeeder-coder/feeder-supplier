@@ -108,6 +108,10 @@ Route::prefix('orders')->group(function () {
         ->middleware('permission:orders.print')
         ->name('orders.reprint-data');
 
+    Route::post('/warranty-print-data', [OrderPrintController::class, 'prepareWarranty'])
+        ->middleware('permission:orders.print')
+        ->name('orders.warranty-print-data');
+
     Route::post('/send-to-packing', [OrderFulfillmentController::class, 'sendToPackaging'])
         ->middleware('permission:orders.send-to-packing')
         ->name('orders.send-to-packing');

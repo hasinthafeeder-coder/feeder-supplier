@@ -201,7 +201,32 @@
         return params;
     }
 
+    function disposeActionTooltips() {
+        if (!window.bootstrap || typeof bootstrap.Tooltip !== 'function') {
+            return;
+        }
+
+        tableBody.querySelectorAll('[data-bs-toggle="tooltip"]').forEach((el) => {
+            const instance = bootstrap.Tooltip.getInstance(el);
+            if (instance) {
+                instance.dispose();
+            }
+        });
+    }
+
+    function initActionTooltips() {
+        if (!window.bootstrap || typeof bootstrap.Tooltip !== 'function') {
+            return;
+        }
+
+        tableBody.querySelectorAll('[data-bs-toggle="tooltip"]').forEach((el) => {
+            bootstrap.Tooltip.getOrCreateInstance(el);
+        });
+    }
+
     function renderRows(orders) {
+        disposeActionTooltips();
+
         if (!orders.length) {
             tableBody.innerHTML = `
                 <tr>
@@ -216,7 +241,12 @@
         tableBody.innerHTML = orders.map((order) => {
             const showUrl = orderShowUrl(order);
             const viewCell = showUrl
-                ? `<a href="${escapeHtml(showUrl)}" class="btn btn-sm btn-light border order-view-btn">View</a>`
+                ? `<a href="${escapeHtml(showUrl)}"
+                        class="bg-transparent p-0 border-0 text-decoration-none order-view-btn"
+                        data-bs-toggle="tooltip" data-bs-placement="top"
+                        data-bs-title="View Order">
+                        <i class="material-symbols-outlined fs-16 fw-normal text-primary">visibility</i>
+                    </a>`
                 : '—';
 
             return `
@@ -238,11 +268,15 @@
                         <div>${escapeHtml(order.updated_at || '—')}</div>
                     </td>
                     <td class="text-end">
-                        ${viewCell}
+                        <div class="d-flex justify-content-end" style="gap: 12px;">
+                            ${viewCell}
+                        </div>
                     </td>
                 </tr>
             `;
         }).join('');
+
+        initActionTooltips();
     }
 
     function renderPagination(meta) {

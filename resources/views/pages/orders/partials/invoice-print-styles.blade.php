@@ -504,6 +504,87 @@
         font-weight: 700;
     }
 
+    /* Warranty Certificate — A6 (105 × 148 mm) */
+    #supplierInvoicePrintSurface .supplier-invoice-print-documents.is-a6 .warranty-page {
+        width: 105mm;
+        min-height: 148mm;
+        max-width: 100%;
+        margin: 12px auto;
+        padding: 8mm;
+        background: #fff;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+        color: #111;
+        font-family: Georgia, 'Times New Roman', Times, serif;
+        box-sizing: border-box;
+        page-break-after: always;
+        break-after: page;
+    }
+
+    #supplierInvoicePrintSurface .supplier-invoice-print-documents.is-a6 .warranty-page:last-child {
+        page-break-after: auto;
+        break-after: auto;
+    }
+
+    #supplierInvoicePrintSurface .warranty-card {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        min-height: 132mm;
+        border: 1px solid #222;
+        padding: 8mm 7mm;
+        box-sizing: border-box;
+    }
+
+    #supplierInvoicePrintSurface .warranty-title {
+        text-align: center;
+        font-size: 18px;
+        font-weight: 700;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        margin: 0 0 6mm;
+    }
+
+    #supplierInvoicePrintSurface .warranty-meta {
+        margin: 0 0 5mm;
+        font-size: 11px;
+        line-height: 1.55;
+    }
+
+    #supplierInvoicePrintSurface .warranty-meta div {
+        margin: 0 0 1.5mm;
+    }
+
+    #supplierInvoicePrintSurface .warranty-product {
+        text-align: center;
+        margin: 4mm 0 5mm;
+    }
+
+    #supplierInvoicePrintSurface .warranty-product-name {
+        font-size: 15px;
+        font-weight: 700;
+        margin: 0 0 2mm;
+        word-break: break-word;
+    }
+
+    #supplierInvoicePrintSurface .warranty-period {
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    #supplierInvoicePrintSurface .warranty-coverage {
+        font-size: 10.5px;
+        line-height: 1.45;
+        margin: 0 0 6mm;
+        text-align: justify;
+    }
+
+    #supplierInvoicePrintSurface .warranty-phone {
+        text-align: center;
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 0.3px;
+    }
+
     /* Print Item List — A4 centered pick list (no barcodes) */
     #supplierInvoicePrintSurface .supplier-invoice-print-documents.is-a4 .item-list-page {
         width: 210mm;
@@ -603,7 +684,8 @@
             display: block !important;
         }
 
-        body.supplier-invoice-print-active #supplierInvoicePrintSurface .invoice-page {
+        body.supplier-invoice-print-active #supplierInvoicePrintSurface .invoice-page,
+        body.supplier-invoice-print-active #supplierInvoicePrintSurface .warranty-page {
             display: block !important;
             width: auto !important;
             min-height: 0 !important;
@@ -617,9 +699,16 @@
             page-break-inside: avoid;
         }
 
-        body.supplier-invoice-print-active #supplierInvoicePrintSurface .invoice-page:last-child {
+        body.supplier-invoice-print-active #supplierInvoicePrintSurface .invoice-page:last-child,
+        body.supplier-invoice-print-active #supplierInvoicePrintSurface .warranty-page:last-child {
             page-break-after: auto;
             break-after: auto;
+        }
+
+        body.supplier-invoice-print-active #supplierInvoicePrintSurface .supplier-invoice-print-documents.is-a6 .warranty-page {
+            width: 105mm !important;
+            min-height: 0 !important;
+            padding: 0 !important;
         }
 
         body.supplier-invoice-print-active #supplierInvoicePrintSurface .inv-header,
